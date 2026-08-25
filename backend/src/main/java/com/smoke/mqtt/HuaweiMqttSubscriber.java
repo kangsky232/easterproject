@@ -3,6 +3,7 @@ package com.smoke.mqtt;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smoke.dto.TelemetryRequest;
+import com.smoke.exception.BusinessException;
 import com.smoke.service.TelemetryService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -121,9 +122,10 @@ public class HuaweiMqttSubscriber implements MqttCallbackExtended {
 
     @Override
     public void messageArrived(String topic, MqttMessage message) {
+        String deviceId = null;
         try {
             JsonNode root = objectMapper.readTree(message.getPayload());
-            String deviceId = resolveDeviceId(topic, root);
+            deviceId = resolveDeviceId(topic, root);
             Integer concentration = extractConcentration(root);
             if (deviceId == null || concentration == null) {
                 log.warn("忽略无法解析的 MQTT 消息: topic={}, payload={}", topic,
@@ -135,6 +137,9 @@ public class HuaweiMqttSubscriber implements MqttCallbackExtended {
                     concentration,
                     deviceId + ":" + System.currentTimeMillis(),
                     LocalDateTime.now()));
+        } catch (BusinessException exception) {
+            log.warn("忽略 MQTT 消息: topic={}, deviceId={}, reason={}",
+                    topic, deviceId, exception.getMessage());
         } catch (Exception exception) {
             log.warn("处理 MQTT 消息失败: topic={}", topic, exception);
         }

@@ -1,8 +1,8 @@
 const pad = (value: number) => String(value).padStart(2, '0')
 
-/** 数字展示：空值显示 --，其余保留 1 位小数。 */
+/** 烟雾浓度展示：空值显示 --，其余保留 2 位小数。 */
 export function conc(value: number | null | undefined): string {
-  return value === null || value === undefined ? '--' : Number(value).toFixed(1)
+  return value === null || value === undefined ? '--' : Number(value).toFixed(2)
 }
 
 /** ISO 时间 → HH:mm:ss，解析失败时原样返回。 */

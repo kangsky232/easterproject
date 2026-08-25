@@ -13,7 +13,7 @@ let chart: echarts.ECharts | null = null
 
 const device = computed(() => store.selectedDevice)
 const statusMeta = computed(() => DEVICE_STATUS[device.value?.status ?? 'offline'])
-const heroDisplay = useCountUp(() => device.value?.latestConcentration)
+const heroDisplay = useCountUp(() => device.value?.latestConcentration, 500, 2)
 
 const RANGES = [
   { hours: 24, label: '24小时' },
@@ -37,7 +37,9 @@ function render(): void {
         axisPointer: { type: 'line', lineStyle: { color: theme.ink3, width: 1 } },
         formatter: (params: unknown) => {
           const list = params as { axisValue?: string; value?: number | string }[]
-          return `${list[0]?.axisValue || ''}<br/>烟雾浓度：<b>${list[0]?.value ?? '--'} ppm</b>`
+          const value = list[0]?.value
+          const displayValue = value === undefined ? '--' : conc(Number(value))
+          return `${list[0]?.axisValue || ''}<br/>烟雾浓度：<b>${displayValue} ppm</b>`
         },
       },
       xAxis: {
@@ -82,7 +84,7 @@ function render(): void {
             silent: true,
             symbol: 'none',
             lineStyle: { color: theme.critical, type: 'dashed', width: 1 },
-            label: { color: theme.ink2, fontSize: 11, formatter: `阈值 ${threshold}` },
+            label: { color: theme.ink2, fontSize: 11, formatter: `阈值 ${conc(threshold)}` },
             data: [{ yAxis: threshold }],
           },
         },

@@ -6,9 +6,11 @@
 *.out
 logs/
 backend/target/
+backend/accessKey*/
 smoke-detector-frontend/node_modules/
 smoke-detector-frontend/dist/
 rag-service/.venv/
+database-export/
 .idea/
 .vscode/
 .claude/settings.local.json
