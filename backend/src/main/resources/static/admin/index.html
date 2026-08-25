@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>智慧烟感 · 用户管理</title>
+  <style>
+    :root { color-scheme: light; font-family: "Microsoft YaHei", system-ui, sans-serif; color: #17324d; background: #f3f6fb; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; border: 0; border-radius: 7px; padding: 9px 13px; background: #1967d2; color: #fff; }
+    button:hover { filter: brightness(.94); }
+    button.secondary { background: #e8eef8; color: #23405f; }
+    button.danger { background: #c43a3a; }
+    button.small { padding: 6px 9px; font-size: 13px; }
+    input, select { width: 100%; border: 1px solid #c8d4e3; border-radius: 7px; padding: 9px 10px; background: #fff; }
+    label { display: grid; gap: 6px; font-size: 14px; color: #4c6175; }
+    [hidden] { display: none !important; }
+    .login { width: min(420px, calc(100% - 32px)); margin: 12vh auto; padding: 28px; background: #fff; border-radius: 12px; box-shadow: 0 12px 35px #1d40601c; }
+    .login h1 { margin: 0 0 8px; font-size: 24px; }
+    .login p { margin: 0 0 22px; color: #64778b; }
+    .form-stack { display: grid; gap: 14px; }
+    .page { width: min(1250px, calc(100% - 32px)); margin: 28px auto 60px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .topbar h1 { margin: 0; font-size: 24px; }
+    .muted { color: #64778b; font-size: 14px; }
+    .card { margin-top: 16px; padding: 20px; background: #fff; border-radius: 12px; box-shadow: 0 4px 16px #1d40600d; }
+    .card h2 { margin: 0 0 16px; font-size: 18px; }
+    .grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; align-items: end; }
+    .grid .actions { display: flex; gap: 8px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 11px 10px; text-align: left; border-bottom: 1px solid #e5ebf2; white-space: nowrap; }
+    th { color: #60758a; font-weight: 600; background: #f8fafc; }
+    .row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .badge { display: inline-block; padding: 3px 7px; border-radius: 999px; background: #e8eef8; color: #254b78; font-size: 12px; }
+    .status-on { color: #168146; font-weight: 600; }
+    .status-off { color: #9a5660; font-weight: 600; }
+    .notice { min-height: 20px; margin: 10px 0 0; color: #b42318; font-size: 14px; }
+    .notice.ok { color: #168146; }
+    dialog { width: min(460px, calc(100% - 32px)); border: 0; border-radius: 12px; padding: 0; box-shadow: 0 18px 50px #132c4f3d; }
+    dialog::backdrop { background: #132c4f73; }
+    .dialog-content { padding: 22px; }
+    .dialog-content h2 { margin: 0 0 16px; font-size: 19px; }
+    .dialog-actions { display: flex; justify-content: end; gap: 8px; margin-top: 18px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } .topbar { align-items: start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <section id="login-view" class="login">
+    <h1>用户管理</h1>
+    <p>使用系统管理员账号登录后管理用户。</p>
+    <form id="login-form" class="form-stack">
+      <label>用户名<input id="login-username" autocomplete="username" required /></label>
+      <label>密码<input id="login-password" type="password" autocomplete="current-password" required /></label>
+      <button type="submit">登录</button>
+    </form>
+    <p id="login-message" class="notice" aria-live="polite"></p>
+  </section>
+
+  <main id="admin-view" class="page" hidden>
+    <header class="topbar">
+      <div>
+        <h1>用户管理</h1>
+        <div id="current-user" class="muted"></div>
+      </div>
+      <button id="logout-button" class="secondary">退出登录</button>
+    </header>
+
+    <section class="card">
+      <h2>查询用户</h2>
+      <form id="filter-form" class="grid">
+        <label>关键词<input id="filter-keyword" placeholder="用户名、显示名称或手机号" /></label>
+        <label>角色
+          <select id="filter-role">
+            <option value="">全部角色</option>
+            <option value="RESIDENT">居民</option>
+            <option value="COMMUNITY_ADMIN">社区管理员</option>
+            <option value="SYSTEM_ADMIN">系统管理员</option>
+            <option value="FIREFIGHTER">消防人员</option>
+          </select>
+        </label>
+        <label>状态
+          <select id="filter-enabled"><option value="">全部状态</option><option value="1">已启用</option><option value="0">已禁用</option></select>
+        </label>
+        <div class="actions"><button type="submit">查询</button><button id="reset-filter" type="button" class="secondary">重置</button></div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>创建用户</h2>
+      <form id="create-form" class="grid">
+        <label>用户名<input name="username" maxlength="64" required /></label>
+        <label>初始密码<input name="password" type="password" minlength="8" maxlength="128" required /></label>
+        <label>显示名称<input name="displayName" maxlength="64" required /></label>
+        <label>角色
+          <select name="role"><option value="RESIDENT">居民</option><option value="COMMUNITY_ADMIN">社区管理员</option><option value="SYSTEM_ADMIN">系统管理员</option><option value="FIREFIGHTER">消防人员</option></select>
+        </label>
+        <label>手机号<input name="phone" maxlength="20" /></label>
+        <div class="actions"><button type="submit">创建</button></div>
+      </form>
+      <p id="action-message" class="notice" aria-live="polite"></p>
+    </section>
+
+    <section class="card">
+      <h2>用户列表</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>用户名</th><th>显示名称</th><th>角色</th><th>手机号</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+          <tbody id="user-rows"><tr><td colspan="7" class="muted">请先登录。</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="edit-dialog">
+    <form id="edit-form" class="dialog-content form-stack">
+      <h2>编辑用户</h2>
+      <input id="edit-id" type="hidden" />
+      <label>显示名称<input id="edit-display-name" maxlength="64" required /></label>
+      <label>角色
+        <select id="edit-role"><option value="RESIDENT">居民</option><option value="COMMUNITY_ADMIN">社区管理员</option><option value="SYSTEM_ADMIN">系统管理员</option><option value="FIREFIGHTER">消防人员</option></select>
+      </label>
+      <label>手机号<input id="edit-phone" maxlength="20" /></label>
+      <p id="edit-message" class="notice"></p>
+      <div class="dialog-actions"><button id="cancel-edit" type="button" class="secondary">取消</button><button type="submit">保存</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="password-dialog">
+    <form id="password-form" class="dialog-content form-stack">
+      <h2 id="password-title">重置密码</h2>
+      <input id="password-id" type="hidden" />
+      <label>新密码<input id="reset-password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required /></label>
+      <p id="password-message" class="notice"></p>
+      <div class="dialog-actions"><button id="cancel-password" type="button" class="secondary">取消</button><button type="submit">确认重置</button></div>
+    </form>
+  </dialog>
+
+  <script>
+    (() => {
+      const roleLabels = { RESIDENT: '居民', COMMUNITY_ADMIN: '社区管理员', SYSTEM_ADMIN: '系统管理员', FIREFIGHTER: '消防人员' };
+      const state = { token: sessionStorage.getItem('smart-smoke-admin-token') || '', user: null, users: [] };
+      const byId = (id) => document.getElementById(id);
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+
+      function message(target, text, ok = false) {
+        target.textContent = text || '';
+        target.classList.toggle('ok', ok);
+      }
+
+      function showLogin(reason = '') {
+        state.token = '';
+        state.user = null;
+        sessionStorage.removeItem('smart-smoke-admin-token');
+        byId('admin-view').hidden = true;
+        byId('login-view').hidden = false;
+        message(byId('login-message'), reason);
+      }
+
+      async function api(path, options = {}) {
+        const headers = { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) };
+        if (state.token) headers.Authorization = `Bearer ${state.token}`;
+        const response = await fetch(path, { ...options, headers });
+        const body = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          showLogin('登录已失效，请重新登录。');
+          throw new Error('登录已失效');
+        }
+        if (!response.ok || body.code !== 0) throw new Error(body.message || `请求失败（HTTP ${response.status}）`);
+        return body.data;
+      }
+
+      function renderUsers() {
+        const rows = state.users.map((user) => `
+          <tr>
+            <td>${escapeHtml(user.username)}</td>
+            <td>${escapeHtml(user.displayName)}</td>
+            <td><span class="badge">${escapeHtml(roleLabels[user.role] || user.role)}</span></td>
+            <td>${escapeHtml(user.phone || '—')}</td>
+            <td class="${user.enabled ? 'status-on' : 'status-off'}">${user.enabled ? '已启用' : '已禁用'}</td>
+            <td>${escapeHtml((user.createdAt || '—').replace('T', ' '))}</td>
+            <td><div class="row-actions">
+              <button class="small secondary" data-action="edit" data-id="${user.id}">编辑</button>
+              <button class="small secondary" data-action="password" data-id="${user.id}">重置密码</button>
+              <button class="small ${user.enabled ? 'danger' : 'secondary'}" data-action="status" data-id="${user.id}">${user.enabled ? '禁用' : '启用'}</button>
+              <button class="small danger" data-action="delete" data-id="${user.id}">删除</button>
+            </div></td>
+          </tr>`).join('');
+        byId('user-rows').innerHTML = rows || '<tr><td colspan="7" class="muted">没有符合条件的用户。</td></tr>';
+      }
+
+      async function loadUsers() {
+        const params = new URLSearchParams({ page: '1', pageSize: '200' });
+        const keyword = byId('filter-keyword').value.trim();
+        const role = byId('filter-role').value;
+        const enabled = byId('filter-enabled').value;
+        if (keyword) params.set('keyword', keyword);
+        if (role) params.set('role', role);
+        if (enabled) params.set('enabled', enabled);
+        state.users = (await api(`/api/users?${params}`)).records || [];
+        renderUsers();
+      }
+
+      function showAdmin() {
+        byId('login-view').hidden = true;
+        byId('admin-view').hidden = false;
+        byId('current-user').textContent = `${state.user.displayName || state.user.username}（${state.user.username}）`;
+      }
+
+      byId('login-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        message(byId('login-message'), '');
+        try {
+          const response = await fetch('/api/auth/login', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: byId('login-username').value, password: byId('login-password').value }),
+          });
+          const body = await response.json().catch(() => ({}));
+          if (!response.ok || body.code !== 0 || !body.data?.token) throw new Error(body.message || '登录失败');
+          state.token = body.data.token;
+          state.user = body.data.user;
+          sessionStorage.setItem('smart-smoke-admin-token', state.token);
+          showAdmin();
+          await loadUsers();
+        } catch (error) { message(byId('login-message'), error.message); }
+      });
+
+      byId('logout-button').addEventListener('click', () => showLogin('您已退出登录。'));
+      byId('filter-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try { await loadUsers(); } catch (error) { message(byId('action-message'), error.message); }
+      });
+      byId('reset-filter').addEventListener('click', async () => {
+        byId('filter-form').reset();
+        try { await loadUsers(); } catch (error) { message(byId('action-message'), error.message); }
+      });
+
+      byId('create-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const payload = Object.fromEntries(form.entries());
+        try {
+          await api('/api/users', { method: 'POST', body: JSON.stringify(payload) });
+          event.currentTarget.reset();
+          message(byId('action-message'), '用户已创建。', true);
+          await loadUsers();
+        } catch (error) { message(byId('action-message'), error.message); }
+      });
+
+      byId('user-rows').addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const user = state.users.find((item) => item.id === Number(button.dataset.id));
+        if (!user) return;
+        const action = button.dataset.action;
+        if (action === 'edit') {
+          byId('edit-id').value = user.id;
+          byId('edit-display-name').value = user.displayName || '';
+          byId('edit-role').value = user.role;
+          byId('edit-phone').value = user.phone || '';
+          message(byId('edit-message'), '');
+          byId('edit-dialog').showModal();
+          return;
+        }
+        if (action === 'password') {
+          byId('password-id').value = user.id;
+          byId('password-title').textContent = `重置 ${user.username} 的密码`;
+          byId('reset-password').value = '';
+          message(byId('password-message'), '');
+          byId('password-dialog').showModal();
+          return;
+        }
+        try {
+          if (action === 'status') {
+            const text = user.enabled ? '禁用' : '启用';
+            if (!confirm(`确定要${text}用户“${user.username}”吗？`)) return;
+            await api(`/api/users/${user.id}/status`, { method: 'PUT', body: JSON.stringify({ enabled: user.enabled ? 0 : 1 }) });
+            message(byId('action-message'), `用户已${text}。`, true);
+          }
+          if (action === 'delete') {
+            if (!confirm(`确定要永久删除用户“${user.username}”吗？此操作无法恢复。`)) return;
+            await api(`/api/users/${user.id}`, { method: 'DELETE' });
+            message(byId('action-message'), '用户已删除。', true);
+          }
+          await loadUsers();
+        } catch (error) { message(byId('action-message'), error.message); }
+      });
+
+      byId('cancel-edit').addEventListener('click', () => byId('edit-dialog').close());
+      byId('edit-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const id = byId('edit-id').value;
+        const payload = { displayName: byId('edit-display-name').value, role: byId('edit-role').value, phone: byId('edit-phone').value };
+        try {
+          await api(`/api/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+          byId('edit-dialog').close();
+          message(byId('action-message'), '用户资料已更新。', true);
+          await loadUsers();
+        } catch (error) { message(byId('edit-message'), error.message); }
+      });
+
+      byId('cancel-password').addEventListener('click', () => byId('password-dialog').close());
+      byId('password-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try {
+          await api(`/api/users/${byId('password-id').value}/password`, { method: 'PUT', body: JSON.stringify({ password: byId('reset-password').value }) });
+          byId('password-dialog').close();
+          message(byId('action-message'), '密码已重置；该用户旧登录令牌已失效。', true);
+        } catch (error) { message(byId('password-message'), error.message); }
+      });
+
+      (async () => {
+        if (!state.token) return;
+        try {
+          state.user = await api('/api/auth/me');
+          showAdmin();
+          await loadUsers();
+        } catch (_) { /* api() already returns to the login view */ }
+      })();
+    })();
+  </script>
+</body>
+</html>

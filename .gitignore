@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+*.log
+*.pid
+*.out
+logs/
+backend/target/
+smoke-detector-frontend/node_modules/
+smoke-detector-frontend/dist/
+rag-service/.venv/
+.idea/
+.vscode/
+.claude/settings.local.json
+.DS_Store
+__pycache__/
+*.pyc
