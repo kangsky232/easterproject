@@ -137,7 +137,7 @@ body {
 }
 
 /* ---------- 设备列表 ---------- */
-.device-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+.device-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 460px; }
 .device-card {
   display: flex;
   align-items: center;
@@ -174,10 +174,10 @@ body {
 }
 .hero-unit { font-size: 16px; color: var(--ink-3); }
 .hero-meta { font-size: 13px; color: var(--ink-2); width: 100%; margin-top: 6px; }
-.chart { flex: 1; min-height: 320px; width: 100%; }
+.chart { flex: 1; min-height: 320px; max-height: 560px; width: 100%; }
 
 /* ---------- 告警列表 ---------- */
-.alarm-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+.alarm-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 460px; }
 .alarm-item {
   padding: 12px;
   border: 1px solid var(--border);

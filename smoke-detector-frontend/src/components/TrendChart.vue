@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import * as echarts from 'echarts'
-import { DEVICE_STATUS } from '@/constants'
+import { CHART_METRICS, DEVICE_STATUS, type MetricKey } from '@/constants'
 import { theme } from '@/theme'
 import { useDashboardStore } from '@/store/dashboard'
 import { useCountUp } from '@/composables/useCountUp'
@@ -15,6 +15,10 @@ const device = computed(() => store.selectedDevice)
 const statusMeta = computed(() => DEVICE_STATUS[device.value?.status ?? 'offline'])
 const heroDisplay = useCountUp(() => device.value?.latestConcentration, 500, 2)
 
+const activeMetric = computed(
+  () => CHART_METRICS.find((item) => item.key === store.selectedMetric) ?? CHART_METRICS[0],
+)
+
 function metric(value: number | null | undefined): string {
   return value == null ? '--' : Number(value).toFixed(2)
 }
@@ -27,6 +31,29 @@ function beepLabel(status: string | null | undefined): string {
   return status
 }
 
+function latestValue(key: MetricKey): number | null | undefined {
+  const d = device.value
+  if (!d) return undefined
+  switch (key) {
+    case 'concentration':
+      return d.latestConcentration
+    case 'temperature':
+      return d.latestTemperature
+    case 'humidity':
+      return d.latestHumidity
+    case 'current':
+      return d.latestCurrent
+    case 'wireTemperature':
+      return d.latestWireTemperature
+    case 'coValue':
+      return d.latestCoValue
+  }
+}
+
+function selectMetric(key: MetricKey): void {
+  store.selectMetric(key)
+}
+
 const RANGES = [
   { hours: 0, label: '实时' },
   { hours: 24, label: '24小时' },
@@ -36,12 +63,17 @@ const RANGES = [
 
 function render(): void {
   if (!chart) return
+  const key = store.selectedMetric
+  const values = store.chartSeries[key] ?? []
+  const meta = activeMetric.value
   const threshold = device.value?.threshold ?? 2000
+  const showThreshold = key === 'concentration'
 
-  // 构造 [时间戳, 浓度] 数据
+  // 构造 [时间戳, 数值] 数据；空值保留为 null，使折线断点而非误读为 0。
   const data = store.chartTimes.map((iso, i) => {
     const ts = new Date(iso).getTime()
-    return [ts, store.chartValues[i] ?? 0]
+    const value = values[i]
+    return [ts, value == null ? null : value]
   })
 
   chart.setOption(
@@ -60,7 +92,9 @@ function render(): void {
           const time = new Date(p.value[0])
           const timeStr = `${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}:${String(time.getSeconds()).padStart(2, '0')}`
           const val = p.value[1]
-          return `${timeStr}<br/>烟雾浓度：<b>${conc(val)} ppm</b>`
+          const unit = meta.unit ?? ''
+          if (val == null) return `${timeStr}<br/>${meta.label}：--`
+          return `${timeStr}<br/>${meta.label}：<b>${Number(val).toFixed(2)}${unit}</b>`
         },
       },
       xAxis: {
@@ -88,7 +122,7 @@ function render(): void {
       },
       yAxis: {
         type: 'value',
-        name: 'ppm',
+        name: meta.unit ?? '',
         nameTextStyle: { color: theme.ink3 },
         splitLine: { lineStyle: { color: theme.grid } },
         axisLabel: { color: theme.ink3, fontSize: 11 },
@@ -109,20 +143,22 @@ function render(): void {
       ],
       series: [
         {
-          name: '烟雾浓度',
+          name: meta.label,
           type: 'line',
-          data: data,                               // 使用二维数组
+          data: data,
           showSymbol: false,
           smooth: false,
           lineStyle: { width: 2, color: theme.accent },
           areaStyle: { color: 'rgba(57,135,229,0.10)' },
-          markLine: {
-            silent: true,
-            symbol: 'none',
-            lineStyle: { color: theme.critical, type: 'dashed', width: 1 },
-            label: { color: theme.ink2, fontSize: 11, formatter: `阈值 ${conc(threshold)}` },
-            data: [{ yAxis: threshold }],
-          },
+          markLine: showThreshold
+            ? {
+                silent: true,
+                symbol: 'none',
+                lineStyle: { color: theme.critical, type: 'dashed', width: 1 },
+                label: { color: theme.ink2, fontSize: 11, formatter: `阈值 ${conc(threshold)}` },
+                data: [{ yAxis: threshold }],
+              }
+            : undefined,
         },
       ],
     },
@@ -147,15 +183,15 @@ onUnmounted(() => {
 })
 
 watch(
-  [() => store.chartTimes, () => store.chartValues, () => store.selectedThreshold],
+  [() => store.chartTimes, () => store.chartSeries, () => store.selectedMetric, () => store.selectedThreshold],
   () => render(),
 )
 </script>
 
 <template>
-  <section class="panel panel-center" aria-label="实时浓度趋势">
+  <section class="panel panel-center" aria-label="传感器趋势">
     <div class="panel-head">
-      <h2 class="panel-title">实时浓度趋势</h2>
+      <h2 class="panel-title">{{ activeMetric.label }}趋势</h2>
       <div class="range-switch" role="group" aria-label="时间范围">
         <button
           v-for="range in RANGES"
@@ -181,26 +217,27 @@ watch(
         <span :style="{ color: statusMeta.color }">{{ statusMeta.label }}</span> · 每10秒刷新
       </div>
     </div>
+
     <div class="sensor-metrics" aria-label="实时传感器数据">
-      <div class="sensor-metric">
-        <span>环境温度</span><strong>{{ metric(device?.latestTemperature) }}</strong><small>℃</small>
-      </div>
-      <div class="sensor-metric">
-        <span>环境湿度</span><strong>{{ metric(device?.latestHumidity) }}</strong><small>%</small>
-      </div>
-      <div class="sensor-metric">
-        <span>设备电流</span><strong>{{ metric(device?.latestCurrent) }}</strong>
-      </div>
-      <div class="sensor-metric">
-        <span>线缆温度</span><strong>{{ metric(device?.latestWireTemperature) }}</strong><small>℃</small>
-      </div>
-      <div class="sensor-metric">
-        <span>CO 值</span><strong>{{ metric(device?.latestCoValue) }}</strong>
-      </div>
-      <div class="sensor-metric">
-        <span>蜂鸣器</span><strong class="beep-status">{{ beepLabel(device?.latestBeepStatus) }}</strong>
+      <button
+        v-for="m in CHART_METRICS"
+        :key="m.key"
+        type="button"
+        class="sensor-metric"
+        :class="{ 'is-active': store.selectedMetric === m.key }"
+        :aria-pressed="store.selectedMetric === m.key"
+        @click="selectMetric(m.key)"
+      >
+        <span>{{ m.label }}</span>
+        <strong>{{ metric(latestValue(m.key)) }}</strong>
+        <small v-if="m.unit">{{ m.unit }}</small>
+      </button>
+      <div class="sensor-metric sensor-metric--static">
+        <span>蜂鸣器</span>
+        <strong class="beep-status">{{ beepLabel(device?.latestBeepStatus) }}</strong>
       </div>
     </div>
+
     <div ref="chartEl" class="chart"></div>
   </section>
 </template>
@@ -208,7 +245,7 @@ watch(
 <style scoped>
 .sensor-metrics {
   display: grid;
-  grid-template-columns: repeat(6, minmax(90px, 1fr));
+  grid-template-columns: repeat(7, minmax(84px, 1fr));
   gap: 8px;
   margin: 8px 0 4px;
 }
@@ -220,6 +257,28 @@ watch(
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.02);
   white-space: nowrap;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+button.sensor-metric:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.sensor-metric.is-active {
+  border-color: var(--accent);
+  background: rgba(57, 135, 229, 0.12);
+}
+
+.sensor-metric.is-active span {
+  color: var(--accent);
+}
+
+.sensor-metric--static {
+  cursor: default;
 }
 
 .sensor-metric span {
@@ -248,10 +307,10 @@ watch(
 }
 
 @media (max-width: 1280px) {
-  .sensor-metrics { grid-template-columns: repeat(3, minmax(90px, 1fr)); }
+  .sensor-metrics { grid-template-columns: repeat(4, minmax(84px, 1fr)); }
 }
 
 @media (max-width: 640px) {
-  .sensor-metrics { grid-template-columns: repeat(2, minmax(90px, 1fr)); }
+  .sensor-metrics { grid-template-columns: repeat(2, minmax(84px, 1fr)); }
 }
 </style>

@@ -56,6 +56,11 @@ export interface TrendPointRaw {
   minimum: number
   maximum: number
   samples: number
+  averageTemperature?: number | null
+  averageHumidity?: number | null
+  averageCurrent?: number | null
+  averageWireTemperature?: number | null
+  averageCoValue?: number | null
 }
 
 export interface NotificationRaw {

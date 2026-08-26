@@ -8,5 +8,10 @@ public record TrendPointResponse(
         BigDecimal average,
         BigDecimal minimum,
         BigDecimal maximum,
-        long samples) {
+        long samples,
+        BigDecimal averageTemperature,
+        BigDecimal averageHumidity,
+        BigDecimal averageCurrent,
+        BigDecimal averageWireTemperature,
+        BigDecimal averageCoValue) {
 }

@@ -209,7 +209,7 @@ public class DeviceService {
             long elapsedMinutes = ChronoUnit.MINUTES.between(origin, reading.getTimestamp());
             LocalDateTime bucketStart = origin.plusMinutes((elapsedMinutes / bucketMinutes) * bucketMinutes);
             buckets.computeIfAbsent(bucketStart, ignored -> new TrendAccumulator())
-                    .add(reading.getConcentration());
+                    .add(reading);
         }
         return buckets.entrySet().stream()
                 .map(entry -> entry.getValue().toResponse(entry.getKey()))
@@ -293,16 +293,46 @@ public class DeviceService {
         private BigDecimal maximum;
         private long samples;
 
-        private void add(BigDecimal value) {
+        private final MetricAverage temperature = new MetricAverage();
+        private final MetricAverage humidity = new MetricAverage();
+        private final MetricAverage current = new MetricAverage();
+        private final MetricAverage wireTemperature = new MetricAverage();
+        private final MetricAverage coValue = new MetricAverage();
+
+        private void add(SmokeData reading) {
+            BigDecimal value = reading.getConcentration();
             sum = sum.add(value);
             minimum = minimum == null || value.compareTo(minimum) < 0 ? value : minimum;
             maximum = maximum == null || value.compareTo(maximum) > 0 ? value : maximum;
             samples++;
+            temperature.add(reading.getTemperature());
+            humidity.add(reading.getHumidity());
+            current.add(reading.getCurrentValue());
+            wireTemperature.add(reading.getWireTemperature());
+            coValue.add(reading.getCoValue());
         }
 
         private TrendPointResponse toResponse(LocalDateTime bucketStart) {
             BigDecimal average = sum.divide(BigDecimal.valueOf(samples), 2, RoundingMode.HALF_UP);
-            return new TrendPointResponse(bucketStart, average, minimum, maximum, samples);
+            return new TrendPointResponse(
+                    bucketStart, average, minimum, maximum, samples,
+                    temperature.average(), humidity.average(), current.average(),
+                    wireTemperature.average(), coValue.average());
+        }
+    }
+
+    private static final class MetricAverage {
+        private BigDecimal sum;
+        private long samples;
+
+        private void add(BigDecimal value) {
+            if (value == null) return;
+            sum = sum == null ? value : sum.add(value);
+            samples++;
+        }
+
+        private BigDecimal average() {
+            return samples == 0 ? null : sum.divide(BigDecimal.valueOf(samples), 2, RoundingMode.HALF_UP);
         }
     }
 }

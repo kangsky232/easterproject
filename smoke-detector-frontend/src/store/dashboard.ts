@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { ALARM_TYPE, TOKEN_KEY, USER_KEY } from '@/constants'
+import { ALARM_TYPE, TOKEN_KEY, USER_KEY, type MetricKey } from '@/constants'
 import { theme } from '@/theme'
 import type {
   Alarm,
@@ -38,6 +38,23 @@ function bucketFor(hours: number): number {
   return 240
 }
 
+// 空序列模板：每个指标一条序列，与烟雾浓度共用同一数据通道。
+function emptySeries(): Record<MetricKey, (number | null)[]> {
+  return {
+    concentration: [],
+    temperature: [],
+    humidity: [],
+    current: [],
+    wireTemperature: [],
+    coValue: [],
+  }
+}
+
+// 扩展指标可能为空（旧数据 / 未上报），空值保留为 null 以便折线断点，避免误读为 0。
+function toNum(value: number | null | undefined): number | null {
+  return value == null ? null : Number(value)
+}
+
 export const useDashboardStore = defineStore('dashboard', () => {
   // ---------- 认证 ----------
   const token = ref(localStorage.getItem(TOKEN_KEY) || '')
@@ -73,7 +90,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
   // 0 表示实时模式：展示最近 120 条原始数据，并随全局轮询每 10 秒刷新。
   const trendHours = ref(0)
   const chartTimes = ref<string[]>([])
-  const chartValues = ref<number[]>([])
+  const chartSeries = ref<Record<MetricKey, (number | null)[]>>(emptySeries())
+  const selectedMetric = ref<MetricKey>('concentration')
 
   // ---------- 界面提示 ----------
   const toast = ref('')
@@ -176,7 +194,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     overview.value = { totalDevices: 0, onlineDevices: 0, offlineDevices: 0, activeAlerts: 0 }
     selectedId.value = null
     chartTimes.value = []
-    chartValues.value = []
+    chartSeries.value = emptySeries()
+    selectedMetric.value = 'concentration'
     needsLogin.value = true
     loginMessage.value = ''
   }
@@ -229,7 +248,14 @@ export const useDashboardStore = defineStore('dashboard', () => {
       if (trendHours.value === 0) {
         const records = (await api.fetchHistory(deviceId)).slice().reverse()
         chartTimes.value = records.map((item) => item.timestamp)
-        chartValues.value = records.map((item) => Number(item.concentration ?? 0))
+        chartSeries.value = {
+          concentration: records.map((item) => Number(item.concentration ?? 0)),
+          temperature: records.map((item) => toNum(item.temperature)),
+          humidity: records.map((item) => toNum(item.humidity)),
+          current: records.map((item) => toNum(item.currentValue)),
+          wireTemperature: records.map((item) => toNum(item.wireTemperature)),
+          coValue: records.map((item) => toNum(item.coValue)),
+        }
         return
       }
 
@@ -241,7 +267,14 @@ export const useDashboardStore = defineStore('dashboard', () => {
         bucketMinutes: bucketFor(trendHours.value),
       })
       chartTimes.value = records.map((item) => item.bucketStart)
-      chartValues.value = records.map((item) => Number(item.average ?? 0))
+      chartSeries.value = {
+        concentration: records.map((item) => Number(item.average ?? 0)),
+        temperature: records.map((item) => toNum(item.averageTemperature)),
+        humidity: records.map((item) => toNum(item.averageHumidity)),
+        current: records.map((item) => toNum(item.averageCurrent)),
+        wireTemperature: records.map((item) => toNum(item.averageWireTemperature)),
+        coValue: records.map((item) => toNum(item.averageCoValue)),
+      }
     } catch (error) {
       console.warn('无法加载设备趋势：', (error as Error).message)
     }
@@ -330,6 +363,11 @@ export const useDashboardStore = defineStore('dashboard', () => {
     if (trendHours.value === hours) return
     trendHours.value = hours
     if (selectedId.value !== null) void fetchTrend(selectedId.value)
+  }
+
+  function selectMetric(key: MetricKey): void {
+    if (selectedMetric.value === key) return
+    selectedMetric.value = key
   }
 
   function showToast(text: string, kind: ToastKind = 'info'): void {
@@ -495,7 +533,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       if (selectedId.value === id) {
         selectedId.value = null
         chartTimes.value = []
-        chartValues.value = []
+        chartSeries.value = emptySeries()
       }
       await refreshAll()
     } catch (error) {
@@ -571,7 +609,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     selectedId,
     trendHours,
     chartTimes,
-    chartValues,
+    chartSeries,
+    selectedMetric,
     // 界面提示
     toast,
     toastVisible,
@@ -602,6 +641,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     refreshAll,
     selectDevice,
     setTrendHours,
+    selectMetric,
     simulateAlarm,
     handleAlarm,
     verifyAlarm,
