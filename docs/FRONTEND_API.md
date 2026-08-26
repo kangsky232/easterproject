@@ -1,10 +1,10 @@
 # 前端接口协作说明
 
-契约版本：2026-08-24。接口字段以本文件和开发环境 OpenAPI 为准；功能是否为真实外部集成，请同时查看 [功能状态](PROJECT_STATUS.md)。
+契约版本：2026-08-26。接口字段以本文件和开发环境 OpenAPI 为准；功能是否为真实外部集成，请同时查看 [功能状态](PROJECT_STATUS.md)。
 
 本文面向 Web、移动端和后续管理端开发。开发环境默认后端地址为 `http://127.0.0.1:8080`；Vite 开发时可直接使用 `/api` 代理。
 
-生产环境必须使用实际的 HTTPS 域名，不要在客户端写死 `localhost` 或 IP。
+生产环境必须使用实际的 HTTPS 域名，不要在客户端写死 `localhost` 或 IP。Cloudflare Pages 构建通过 `VITE_API_BASE` 注入后端地址；这是构建时变量，修改后必须重新部署。
 
 ## 统一约定
 
@@ -146,11 +146,13 @@ Authorization: Bearer <token>
   "location": "1号楼101室",
   "threshold": 2000,
   "battery": 86,
-  "latestConcentration": 850,
+  "latestConcentration": 20.37,
   "latestTimestamp": "2026-08-24T14:30:00",
   "online": true
 }
 ```
+
+浓度字段使用 JSON `number`，后端最多保留两位小数；前端统一显示两位小数。阈值仍使用正整数。
 
 ## 告警
 
@@ -271,7 +273,7 @@ Authorization: Bearer <token>
 
 | 方法 | 路径 | 请求体 |
 | --- | --- | --- |
-| POST | `/api/telemetry` | `{"deviceId":"SMOKE-001","concentration":850,"messageId":"唯一消息ID","timestamp":"2026-08-24T14:30:00"}` |
+| POST | `/api/telemetry` | `{"deviceId":"SMOKE-001","concentration":20.37,"messageId":"唯一消息ID","timestamp":"2026-08-24T14:30:00"}` |
 | POST | `/api/heartbeat` | `{"deviceId":"SMOKE-001","battery":86}` |
 
 生产环境必须携带 `X-Device-Token`。`messageId` 应由设备复用以支持去重重试。
@@ -279,9 +281,11 @@ Authorization: Bearer <token>
 ## 开发联调清单
 
 1. 登录后在 API 客户端自动注入 `Authorization: Bearer <token>`。
-2. 每个页面初次进入拉取自身数据；页面显示期间可每 10–30 秒轮询告警、仪表盘和通知摘要。
+2. 当前主前端每 10 秒刷新后端数据；实时趋势使用最近 120 条原始点，24 小时/7 天/30 天视图调用聚合趋势接口。
 3. 统一处理 `401`（重新登录）与 `403`（无权限）。
 4. 列表页保留筛选参数，所有分页接口最大 `pageSize` 为 200。
 5. 不向前端返回或记录密码、JWT、设备明文令牌；设备轮换令牌只显示一次。
 
 开发环境还可打开 `http://127.0.0.1:8080/swagger-ui.html` 查看自动生成的 OpenAPI 文档。
+
+Cloudflare Pages 与本机后端联调、CORS 和断连排查见 [CLOUDFLARE_PAGES.md](CLOUDFLARE_PAGES.md)。

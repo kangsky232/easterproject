@@ -1,8 +1,8 @@
 # 部署说明（上线前准备）
 
-更新日期：2026-08-24。
+更新日期：2026-08-26。
 
-> 当前仓库已提供生产配置、容器编排和 HTTPS 反向代理模板，但尚未绑定域名、服务器、防火墙规则或证书，因此不能视为已上线。
+> 当前仓库已提供生产配置、容器编排和 HTTPS 反向代理模板。Cloudflare Pages + 本机 Quick Tunnel 可用于演示，但没有固定后端域名和可用性保证，不能视为正式上线。
 
 ## 已完成的生产化约束
 
@@ -24,6 +24,13 @@
 - 完成 MySQL 备份和恢复演练，明确日志轮转、监控和告警接收人。
 - 真实 SMS、APP 推送、MQTT 或视觉服务未接入时，在产品界面明确标注不可用或模拟状态。
 - 使用 HTTPS 域名验证登录、改密后旧 Token 失效、角色权限、设备令牌、告警全流程和错误响应。
+- 已有数据库执行 `docs/migrations/20260826_decimal_concentration.sql`，并验证小数浓度入库、查询、趋势聚合和告警记录。
+
+## Cloudflare Pages 演示部署
+
+Pages 配置：根目录 `smoke-detector-frontend`、构建命令 `npm run build`、输出目录 `dist`、生产分支 `master`。生产变量 `VITE_API_BASE` 必须指向当前 HTTPS 后端。
+
+`VITE_API_BASE` 在构建时写入静态 JavaScript。修改它之后必须重新部署；Quick Tunnel 每次重启通常更换域名，因此每次都要同步变量并重新构建。完整步骤与排错见 [Cloudflare Pages 与本机后端联调](CLOUDFLARE_PAGES.md)。
 
 ## 单机 Docker 部署步骤
 
@@ -46,9 +53,9 @@
 - 每日至少备份一次 MySQL，并定期恢复演练；`mysql-data` Docker 卷不是备份。
 - 收集并轮转 `backend-logs` 卷中的审计与错误日志，避免磁盘写满。
 - 在公网入口实施 WAF/请求限流；应用内登录限流仅适用于单实例，扩容后需使用网关或 Redis 共享限流状态。
-- 启用 EMQX 的账户认证与 ACL 后，再填写 `MQTT_USERNAME`、`MQTT_PASSWORD`。该策略取决于实际 Broker 管理方式，当前未替你创建生产 Broker 账户。
+- 使用华为云 IoTDA MQTT 时，通过机密管理注入 `MQTT_ACCESS_KEY`、`MQTT_ACCESS_CODE` 和可选的 `MQTT_INSTANCE_ID`，不得写入镜像、Git、日志或截图。`mqtt=CONNECTED` 只表示订阅连接正常，仍需监控设备最后心跳和消息滞后。
 - 当前 APP 仅代表本地通知中心记录，SMS 保持 `PENDING` 且不会实际发送，视觉复核为规则辅助；接入真实短信、推送、摄像头或模型服务前，不能把它们当成生产告警通道或视觉识别结果。
 
 ## 回滚与升级
 
-先在测试环境使用同一份配置完成数据库迁移与回归测试。生产升级前备份数据库，记录镜像版本；若应用回滚，数据库迁移应使用向后兼容的新增字段方式，禁止直接删除生产表或数据。
+先在测试环境使用同一份配置完成数据库迁移与回归测试。生产升级前备份数据库，记录镜像版本。本版本将 `smoke_data.concentration` 和 `alert_record.concentration` 升级为 `DECIMAL(12,2)`；旧应用回滚前必须验证其对 DECIMAL 的读取兼容性。禁止直接删除生产表或数据。

@@ -1,8 +1,8 @@
 # 智慧烟感监测系统
 
-面向社区烟感监测场景的全栈项目，包含 Vue 3 管理大屏、Spring Boot API、MySQL 数据存储、设备上报协议，以及可选的 MQTT、RAG 和视觉复核扩展。
+面向社区烟感监测场景的全栈项目，包含 Vue 3 管理大屏、Spring Boot API、MySQL 数据存储、HTTP 设备接口、华为云 IoTDA MQTT 数据接入，以及可选的 RAG 和视觉复核扩展。
 
-> 当前版本可在不使用 Docker、不启动 MQTT 的情况下完成登录、设备、遥测、告警、通知记录和用户管理联调。真实短信、APP 推送、MQTT 广播和摄像头识别仍属于外部集成项，详见 [功能状态](docs/PROJECT_STATUS.md)。
+> 当前版本已实现 MQTT 入站遥测，但不依赖 MQTT 也能完成登录、设备、HTTP 遥测、告警、通知记录和用户管理联调。真实短信、移动推送、MQTT 广播和摄像头识别仍属于外部集成项，详见 [功能状态](docs/PROJECT_STATUS.md)。
 
 ## 项目结构
 
@@ -22,7 +22,7 @@ smart-smoke/
 
 前置环境：JDK 17+、Maven 3.9+、Node.js 18+、MySQL 8。
 
-1. 启动本机 MySQL，创建 `smart_smoke` 数据库并执行 `docs/schema.sql`。
+1. 启动本机 MySQL，创建 `smart_smoke` 数据库并执行 `docs/schema.sql`。已有旧数据库还需执行 [浓度小数迁移](docs/migrations/20260826_decimal_concentration.sql)。
 2. 启动后端：
 
 ```powershell
@@ -45,7 +45,9 @@ npm run dev
 - Swagger：`http://127.0.0.1:8080/swagger-ui.html`
 - 独立用户管理页：`http://127.0.0.1:8080/admin/`
 
-MQTT 和 RAG 服务不是本地核心功能启动的前置条件。RAG 不可用时后端会返回内置安全规则答案；未接短信供应商时 SMS 通知保留为待发送记录。
+MQTT 和 RAG 服务不是本地核心功能启动的前置条件。配置 `MQTT_ENABLED=true` 后，后端会订阅华为云转发主题并保留 `Smoke_Value` 两位小数；RAG 不可用时后端会返回内置安全规则答案；未接短信供应商时 SMS 通知保留为待发送记录。
+
+管理大屏默认以“实时”模式展示最近 120 条原始浓度数据，每 10 秒刷新一次；24 小时、7 天和 30 天视图使用后端聚合趋势接口。
 
 ## 开发账号说明
 
@@ -72,5 +74,7 @@ npm run build
 - [功能完成状态](docs/PROJECT_STATUS.md)
 - [智能问答优化记录](docs/SMART_QA_OPTIMIZATION.md)
 - [部署与上线检查](docs/DEPLOYMENT.md)
+- [Cloudflare Pages 与本机后端联调](docs/CLOUDFLARE_PAGES.md)
+- [硬件与华为云 MQTT 接入](hardware/README.md)
 
 `docker-compose.yml` 用于可选的服务器容器化部署，不是本地启动后端、前端或接入 MQTT 的强制要求。

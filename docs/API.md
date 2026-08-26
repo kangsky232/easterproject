@@ -1,6 +1,6 @@
 # 后端接口
 
-更新日期：2026-08-24。开发环境可通过 `/swagger-ui.html` 查看由代码生成的 OpenAPI 文档；本文件记录业务语义和协作约定。
+更新日期：2026-08-26。开发环境可通过 `/swagger-ui.html` 查看由代码生成的 OpenAPI 文档；本文件记录业务语义和协作约定。
 
 统一响应格式：
 
@@ -139,6 +139,8 @@ GET /api/devices/1/history?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&lim
 GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucketMinutes=30
 ```
 
+最新浓度、历史浓度、趋势平均/最小/最大值以及烟雾告警触发浓度均为 JSON 数字，可包含两位小数；阈值当前仍为正整数。
+
 ## 数据接入
 
 - `POST /api/telemetry`：上报烟雾浓度，同时刷新设备在线状态并判断阈值。
@@ -149,13 +151,13 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 ```json
 {
   "deviceId": "SMOKE-001",
-  "concentration": 850,
+  "concentration": 20.37,
   "messageId": "SMOKE-001-20260822-0001",
   "timestamp": "2026-08-22T10:00:00"
 }
 ```
 
-`messageId` 和 `timestamp` 可选；设备重试时应复用同一 `messageId`，服务端会返回 `duplicate: true` 且不会重复入库。
+`concentration` 范围为 `0`–`1000000`，服务端四舍五入保留两位小数。`messageId` 和 `timestamp` 可选；设备重试时应复用同一 `messageId`，服务端会返回 `duplicate: true` 且不会重复入库。
 
 心跳上报：
 
@@ -166,6 +168,12 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 `battery` 可选，取值范围为 `0` 到 `100`。
 
 系统每 30 秒检查一次设备，超过 60 秒未上报心跳会将设备标记为离线并生成离线告警。两个时间参数可在 `application.yml` 中调整。
+
+### MQTT 入站
+
+设置 `MQTT_ENABLED=true` 后，后端会连接配置的 Broker 并订阅 `MQTT_TOPIC`。当前适配器用于接收华为云 IoTDA 规则转发消息，从 `Smoke_Value` 解析小数浓度，再复用同一遥测服务完成入库、在线状态和阈值判断。详细 payload、凭据和 Instance ID 说明见 [硬件接入文档](../hardware/README.md)。
+
+`GET /api/system/capabilities` 中的 `mqtt=CONNECTED` 只说明后端订阅连接正常，不代表设备仍在上报。设备在线状态以最后心跳/遥测时间为准。
 
 ## 告警
 

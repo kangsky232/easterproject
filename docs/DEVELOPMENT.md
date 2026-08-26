@@ -1,6 +1,6 @@
 # 本地开发说明
 
-更新日期：2026-08-24。本说明以 Windows PowerShell 为例，默认采用非 Docker 启动方式。
+更新日期：2026-08-26。本说明以 Windows PowerShell 为例，默认采用非 Docker 启动方式。
 
 ## 组件与依赖
 
@@ -10,7 +10,7 @@
 | Spring Boot 后端 | `8080` | 是 | API、认证和独立用户管理页 |
 | Vue/Vite 前端 | `5173` | 是 | 端口占用时 Vite 会自动选择下一个端口 |
 | RAG 服务 | `5001` | 否 | 不可用时后端使用内置安全规则降级 |
-| MQTT Broker | `1883` | 否 | 仅真实设备消息和广播发布需要 |
+| MQTT Broker/华为云 IoTDA | 由平台决定 | 否 | 后端已支持 MQTT 入站遥测；HTTP 联调不依赖它 |
 
 需要安装 JDK 17+、Maven 3.9+、Node.js 18+、npm 和 MySQL 8。
 
@@ -25,6 +25,14 @@ password=<空>
 ```
 
 如果你的 MySQL 账号或端口不同，请设置 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`，不要修改并提交个人密码。
+
+从旧版本升级时，再执行：
+
+```powershell
+mysql -uroot smart_smoke -e "SOURCE docs/migrations/20260826_decimal_concentration.sql"
+```
+
+该迁移把监测数据和告警中的浓度列改为 `DECIMAL(12,2)`；已有整数记录会变成 `.00`，旧版本已经截断的小数无法恢复。
 
 ## 2. 启动后端
 
@@ -61,7 +69,9 @@ python -m pip install -r requirements.txt
 python app.py
 ```
 
-MQTT Broker 不影响登录、数据库接口和前端基本联调。需要接入真实 MQTT 时，可使用本机已安装的 Broker、远程 Broker 或 Docker 中的 EMQX，并通过 `MQTT_BROKER` 指向实际地址。
+MQTT 不影响登录、数据库接口和前端基本联调。需要接入华为云规则转发时，设置 `MQTT_ENABLED=true`、Broker、Access Key、Access Code、可选 Instance ID 和订阅主题。真实值可保存到仓库已忽略的 `.env.mqtt.local`，但 Spring Boot 不会自动读取该文件，启动进程或 IDE 必须显式加载这些环境变量。
+
+订阅器接收 `Smoke_Value` 后按两位小数入库。详细 payload 和配置见 [硬件与 MQTT 说明](../hardware/README.md)。当前 MQTT 只实现入站遥测，广播下行仍仅保存数据库记录。
 
 ## 开发账号
 
@@ -83,9 +93,14 @@ MQTT Broker 不影响登录、数据库接口和前端基本联调。需要接�
 | `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD` | 引导管理员凭据 | 建议按开发者单独设置 |
 | `BOOTSTRAP_ADMIN_RESET_PASSWORD` | 单次本地密码恢复 | 默认 `false`，生产禁止 |
 | `RAG_SERVICE_URL` | RAG 接口 | `http://127.0.0.1:5001/api/chat/query` |
-| `MQTT_BROKER` | MQTT 地址 | `tcp://localhost:1883` |
+| `MQTT_ENABLED` | 是否启动 MQTT 入站订阅 | 默认 `false` |
+| `MQTT_BROKER` | MQTT 地址 | 华为云通常使用 `ssl://...:8883` |
+| `MQTT_ACCESS_KEY` / `MQTT_ACCESS_CODE` | MQTT 登录凭据 | 仅放在本地环境或机密管理中 |
+| `MQTT_INSTANCE_ID` | MQTT 实例 ID | 平台未要求时可留空 |
+| `MQTT_TOPIC` | 规则转发订阅主题 | 默认 `smoke/report` |
 | `DEVICE_AUTH_ENABLED` | 开发环境设备令牌校验 | 默认 `false`；生产强制开启 |
 | `CORS_ALLOWED_ORIGINS` | 允许的前端来源 | 开发默认允许 `5173/5174` |
+| `LOGIN_RATE_LIMIT_ENABLED` | 是否启用登录失败限流 | 默认 `true`；生产不应关闭 |
 
 ## 设备接入
 
@@ -96,7 +111,7 @@ POST /api/telemetry
 X-Device-Token: <deviceAccessToken>
 Content-Type: application/json
 
-{"deviceId":"SMOKE-001","concentration":850,"messageId":"SMOKE-001-001"}
+{"deviceId":"SMOKE-001","concentration":20.37,"messageId":"SMOKE-001-001"}
 ```
 
 设备重试时必须复用相同 `messageId`，避免重复入库。令牌遗失时由管理员调用 `POST /api/devices/{id}/credentials` 轮换，旧令牌立即失效。
@@ -124,4 +139,7 @@ python -m py_compile app.py
 - 登录一直失败：确认前端请求的是当前后端，并查询数据库中的实际账号状态；已有数据库不会自动恢复默认密码。
 - 前端启动到 `5174`：说明 `5173` 已被占用，属于 Vite 的正常行为，后端开发 CORS 已允许两个端口。
 - MQTT 连接失败：本地核心接口仍可使用；只有真实 MQTT 收发需要启动 Broker。
+- `mqtt=CONNECTED` 但设备离线：这只代表后端连上 Broker；检查硬件供电、IoTDA 规则转发、订阅主题、设备编号和数据库最新时间。
+- Pages 显示后端断开：先分别检查本机 `/api/health` 和公网隧道 `/api/health`，再确认 `VITE_API_BASE` 修改后重新部署。详见 [Cloudflare Pages 联调](CLOUDFLARE_PAGES.md)。
+- 浓度一直是 `.00`：确认浮点升级后是否收到过新数据；旧记录曾被截断，不能证明硬件原始值是否包含小数。
 - 修改密码后出现 `401`：旧 JWT 会立即失效，使用新密码重新登录即可。
