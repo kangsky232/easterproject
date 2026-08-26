@@ -71,7 +71,7 @@ python app.py
 
 MQTT 不影响登录、数据库接口和前端基本联调。需要接入华为云规则转发时，设置 `MQTT_ENABLED=true`、Broker、Access Key、Access Code、可选 Instance ID 和订阅主题。真实值可保存到仓库已忽略的 `.env.mqtt.local`，但 Spring Boot 不会自动读取该文件，启动进程或 IDE 必须显式加载这些环境变量。
 
-订阅器接收 `Smoke_Value` 后按两位小数入库。详细 payload 和配置见 [硬件与 MQTT 说明](../hardware/README.md)。当前 MQTT 只实现入站遥测，广播下行仍仅保存数据库记录。
+订阅器接收 `Smoke_Value`、`Temperature`、`Humidity`、`Current`、`WireTemperature`、`CO_Value` 和 `BeepStatus`，数值按两位小数入库。详细 payload 和配置见 [硬件与 MQTT 说明](../hardware/README.md)。当前 MQTT 只实现入站遥测，广播下行仍仅保存数据库记录。
 
 ## 开发账号
 

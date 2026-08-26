@@ -17,6 +17,12 @@ export interface DeviceRaw {
   threshold: number
   battery?: number | null
   latestConcentration?: number | null
+  latestTemperature?: number | null
+  latestHumidity?: number | null
+  latestCurrent?: number | null
+  latestWireTemperature?: number | null
+  latestCoValue?: number | null
+  latestBeepStatus?: string | null
   latestTimestamp?: string | null
   online: boolean
   deviceAccessToken?: string
@@ -36,6 +42,12 @@ export interface AlarmRaw {
 export interface HistoryPointRaw {
   timestamp: string
   concentration: number
+  temperature?: number | null
+  humidity?: number | null
+  currentValue?: number | null
+  wireTemperature?: number | null
+  coValue?: number | null
+  beepStatus?: string | null
 }
 
 export interface TrendPointRaw {
@@ -131,6 +143,12 @@ export interface Device {
   threshold: number
   battery: number | null
   latestConcentration: number | null
+  latestTemperature: number | null
+  latestHumidity: number | null
+  latestCurrent: number | null
+  latestWireTemperature: number | null
+  latestCoValue: number | null
+  latestBeepStatus: string | null
   latestTime: string | null
   online: boolean
   status: DeviceStatus

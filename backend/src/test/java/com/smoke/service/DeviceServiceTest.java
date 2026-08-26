@@ -85,6 +85,12 @@ class DeviceServiceTest {
         device.setBound(1);
         SmokeData reading = new SmokeData();
         reading.setConcentration(new BigDecimal("380.25"));
+        reading.setTemperature(new BigDecimal("27.43"));
+        reading.setHumidity(new BigDecimal("59.42"));
+        reading.setCurrentValue(new BigDecimal("2.01"));
+        reading.setWireTemperature(new BigDecimal("28.18"));
+        reading.setCoValue(new BigDecimal("0.93"));
+        reading.setBeepStatus("OFF");
         reading.setTimestamp(LocalDateTime.of(2026, 8, 22, 10, 0));
         when(deviceMapper.selectById(1L)).thenReturn(device);
         when(smokeDataMapper.selectOne(any())).thenReturn(reading);
@@ -93,6 +99,12 @@ class DeviceServiceTest {
         CurrentReadingResponse response = service.current(1L);
 
         assertEquals(new BigDecimal("380.25"), response.concentration());
+        assertEquals(new BigDecimal("27.43"), response.temperature());
+        assertEquals(new BigDecimal("59.42"), response.humidity());
+        assertEquals(new BigDecimal("2.01"), response.current());
+        assertEquals(new BigDecimal("28.18"), response.wireTemperature());
+        assertEquals(new BigDecimal("0.93"), response.coValue());
+        assertEquals("OFF", response.beepStatus());
         assertFalse(response.online());
     }
 
@@ -124,6 +136,8 @@ class DeviceServiceTest {
         SmokeData reading = new SmokeData();
         reading.setDeviceId("SMOKE-001");
         reading.setConcentration(new BigDecimal("360.75"));
+        reading.setTemperature(new BigDecimal("26.80"));
+        reading.setBeepStatus("ON");
         reading.setTimestamp(LocalDateTime.of(2026, 8, 22, 10, 5));
         when(deviceMapper.selectPage(
                 org.mockito.ArgumentMatchers.<Page<Device>>any(),
@@ -135,6 +149,8 @@ class DeviceServiceTest {
 
         assertEquals(1, result.total());
         assertEquals(new BigDecimal("360.75"), result.records().get(0).latestConcentration());
+        assertEquals(new BigDecimal("26.80"), result.records().get(0).latestTemperature());
+        assertEquals("ON", result.records().get(0).latestBeepStatus());
         verify(smokeDataMapper).selectLatestByDeviceIds(List.of("SMOKE-001"));
     }
 

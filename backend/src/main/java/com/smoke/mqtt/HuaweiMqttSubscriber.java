@@ -128,15 +128,21 @@ public class HuaweiMqttSubscriber implements MqttCallbackExtended {
         try {
             JsonNode root = objectMapper.readTree(message.getPayload());
             deviceId = resolveDeviceId(topic, root);
-            BigDecimal concentration = extractConcentration(root);
-            if (deviceId == null || concentration == null) {
+            SensorValues values = extractSensorValues(root);
+            if (deviceId == null || values == null || values.concentration() == null) {
                 log.warn("忽略无法解析的 MQTT 消息: topic={}, payload={}", topic,
                         new String(message.getPayload(), StandardCharsets.UTF_8));
                 return;
             }
             telemetryService.record(new TelemetryRequest(
                     deviceId,
-                    concentration,
+                    values.concentration(),
+                    values.temperature(),
+                    values.humidity(),
+                    values.current(),
+                    values.wireTemperature(),
+                    values.coValue(),
+                    values.beepStatus(),
                     deviceId + ":" + System.currentTimeMillis(),
                     LocalDateTime.now()));
         } catch (BusinessException exception) {
@@ -162,19 +168,59 @@ public class HuaweiMqttSubscriber implements MqttCallbackExtended {
         return matcher.find() ? matcher.group(1) : null;
     }
 
-    private BigDecimal extractConcentration(JsonNode root) {
+    private SensorValues extractSensorValues(JsonNode root) {
         for (String pointer : List.of("/devices/0/services", "/notify_data/body/services", "/services")) {
             JsonNode services = root.at(pointer);
             if (services.isMissingNode() || services.isNull() || !services.isArray() || services.isEmpty()) {
                 continue;
             }
-            JsonNode value = services.get(0).at("/properties/Smoke_Value");
-            if (!value.isMissingNode() && !value.isNull()) {
-                // 保留华为云上报的真实小数，统一按两位小数存储和展示。
-                return value.decimalValue().setScale(2, RoundingMode.HALF_UP);
+            for (JsonNode service : services) {
+                JsonNode properties = service.path("properties");
+                BigDecimal concentration = decimal(properties, "Smoke_Value");
+                if (concentration != null) {
+                    return new SensorValues(
+                            concentration,
+                            decimal(properties, "Temperature"),
+                            decimal(properties, "Humidity"),
+                            decimal(properties, "Current"),
+                            decimal(properties, "WireTemperature"),
+                            decimal(properties, "CO_Value"),
+                            text(properties, "BeepStatus"));
+                }
             }
         }
         return null;
+    }
+
+    private BigDecimal decimal(JsonNode properties, String name) {
+        JsonNode value = properties.path(name);
+        if (value.isMissingNode() || value.isNull()) {
+            return null;
+        }
+        try {
+            BigDecimal decimal = value.isNumber()
+                    ? value.decimalValue()
+                    : new BigDecimal(value.asText().trim());
+            return decimal.setScale(2, RoundingMode.HALF_UP);
+        } catch (NumberFormatException exception) {
+            log.warn("忽略无法解析的 MQTT 数值属性: name={}, value={}", name, value.asText());
+            return null;
+        }
+    }
+
+    private String text(JsonNode properties, String name) {
+        JsonNode value = properties.path(name);
+        return value.isMissingNode() || value.isNull() ? null : value.asText();
+    }
+
+    private record SensorValues(
+            BigDecimal concentration,
+            BigDecimal temperature,
+            BigDecimal humidity,
+            BigDecimal current,
+            BigDecimal wireTemperature,
+            BigDecimal coValue,
+            String beepStatus) {
     }
 
     public boolean isConnected() {

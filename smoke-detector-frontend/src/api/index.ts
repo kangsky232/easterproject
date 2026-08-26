@@ -71,6 +71,12 @@ export function login(username: string, password: string): Promise<LoginResponse
 export interface TelemetryPayload {
   deviceId: string
   concentration: number
+  temperature?: number
+  humidity?: number
+  current?: number
+  wireTemperature?: number
+  coValue?: number
+  beepStatus?: string
   messageId: string
   timestamp: string
 }

@@ -14,7 +14,8 @@ public interface SmokeDataMapper extends BaseMapper<SmokeData> {
     @Select("""
             <script>
             SELECT ranked.id, ranked.device_id, ranked.message_id, ranked.concentration,
-                   ranked.timestamp, ranked.created_at
+                   ranked.temperature, ranked.humidity, ranked.current_value, ranked.wire_temperature,
+                   ranked.co_value, ranked.beep_status, ranked.timestamp, ranked.created_at
             FROM (
                 SELECT s.*, ROW_NUMBER() OVER (
                     PARTITION BY s.device_id ORDER BY s.timestamp DESC, s.id DESC

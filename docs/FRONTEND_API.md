@@ -114,8 +114,8 @@ Authorization: Bearer <token>
 | PUT | `/api/devices/{id}/threshold` | 社区管理员、系统管理员 | 更新阈值 |
 | DELETE | `/api/devices/{id}` | 社区管理员、系统管理员 | 软解绑定，保留历史数据 |
 | POST | `/api/devices/{id}/credentials` | 社区管理员、系统管理员 | 轮换设备接入令牌，明文仅返回一次 |
-| GET | `/api/devices/{id}/current` | 已登录 | 最新浓度 |
-| GET | `/api/devices/{id}/history?start=&end=&limit=100` | 已登录 | 原始历史点，`limit` 为 1–1000 |
+| GET | `/api/devices/{id}/current` | 已登录 | 最新传感器数据 |
+| GET | `/api/devices/{id}/history?start=&end=&limit=100` | 已登录 | 原始历史传感器数据，`limit` 为 1–1000 |
 | GET | `/api/devices/{id}/trend?start=&end=&bucketMinutes=60` | 已登录 | 聚合趋势点 |
 
 绑定请求：
@@ -147,12 +147,18 @@ Authorization: Bearer <token>
   "threshold": 2000,
   "battery": 86,
   "latestConcentration": 20.37,
+  "latestTemperature": 27.43,
+  "latestHumidity": 59.42,
+  "latestCurrent": 2.01,
+  "latestWireTemperature": 28.18,
+  "latestCoValue": 0.93,
+  "latestBeepStatus": "OFF",
   "latestTimestamp": "2026-08-24T14:30:00",
   "online": true
 }
 ```
 
-浓度字段使用 JSON `number`，后端最多保留两位小数；前端统一显示两位小数。阈值仍使用正整数。
+所有数值遥测字段使用 JSON `number`，后端最多保留两位小数；前端统一显示两位小数。扩展数据在旧历史记录中可能为 `null`，此时前端显示 `--`。`latestBeepStatus` 通常为 `ON` / `OFF`；阈值仍使用正整数。
 
 ## 告警
 
@@ -273,7 +279,7 @@ Authorization: Bearer <token>
 
 | 方法 | 路径 | 请求体 |
 | --- | --- | --- |
-| POST | `/api/telemetry` | `{"deviceId":"SMOKE-001","concentration":20.37,"messageId":"唯一消息ID","timestamp":"2026-08-24T14:30:00"}` |
+| POST | `/api/telemetry` | `{"deviceId":"SMOKE-001","concentration":20.37,"temperature":27.43,"humidity":59.42,"current":2.01,"wireTemperature":28.18,"coValue":0.93,"beepStatus":"OFF","messageId":"唯一消息ID","timestamp":"2026-08-24T14:30:00"}` |
 | POST | `/api/heartbeat` | `{"deviceId":"SMOKE-001","battery":86}` |
 
 生产环境必须携带 `X-Device-Token`。`messageId` 应由设备复用以支持去重重试。
@@ -281,7 +287,7 @@ Authorization: Bearer <token>
 ## 开发联调清单
 
 1. 登录后在 API 客户端自动注入 `Authorization: Bearer <token>`。
-2. 当前主前端每 10 秒刷新后端数据；实时趋势使用最近 120 条原始点，24 小时/7 天/30 天视图调用聚合趋势接口。
+2. 当前主前端每 10 秒刷新后端数据；主面板展示最新扩展传感器字段，实时烟雾趋势使用最近 120 条原始点，24 小时/7 天/30 天视图调用聚合趋势接口。
 3. 统一处理 `401`（重新登录）与 `403`（无权限）。
 4. 列表页保留筛选参数，所有分页接口最大 `pageSize` 为 200。
 5. 不向前端返回或记录密码、JWT、设备明文令牌；设备轮换令牌只显示一次。

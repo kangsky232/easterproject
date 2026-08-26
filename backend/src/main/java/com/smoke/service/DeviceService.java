@@ -145,6 +145,12 @@ public class DeviceService {
                 device.getDeviceId(),
                 device.getDeviceName(),
                 latest == null ? null : latest.getConcentration(),
+                latest == null ? null : latest.getTemperature(),
+                latest == null ? null : latest.getHumidity(),
+                latest == null ? null : latest.getCurrentValue(),
+                latest == null ? null : latest.getWireTemperature(),
+                latest == null ? null : latest.getCoValue(),
+                latest == null ? null : latest.getBeepStatus(),
                 latest == null ? null : latest.getTimestamp(),
                 device.getSmokeThreshold(),
                 Integer.valueOf(1).equals(device.getStatus()));
@@ -258,6 +264,12 @@ public class DeviceService {
                 device.getBattery(),
                 device.getLastHeartbeat(),
                 latest == null ? null : latest.getConcentration(),
+                latest == null ? null : latest.getTemperature(),
+                latest == null ? null : latest.getHumidity(),
+                latest == null ? null : latest.getCurrentValue(),
+                latest == null ? null : latest.getWireTemperature(),
+                latest == null ? null : latest.getCoValue(),
+                latest == null ? null : latest.getBeepStatus(),
                 latest == null ? null : latest.getTimestamp());
     }
 

@@ -17,6 +17,12 @@ public class SmokeData {
     private String deviceId;
     private String messageId;
     private BigDecimal concentration;
+    private BigDecimal temperature;
+    private BigDecimal humidity;
+    private BigDecimal currentValue;
+    private BigDecimal wireTemperature;
+    private BigDecimal coValue;
+    private String beepStatus;
     private LocalDateTime timestamp;
     private LocalDateTime createdAt;
 }

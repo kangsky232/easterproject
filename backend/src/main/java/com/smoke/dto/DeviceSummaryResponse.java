@@ -13,5 +13,11 @@ public record DeviceSummaryResponse(
         Integer battery,
         LocalDateTime lastHeartbeat,
         BigDecimal latestConcentration,
+        BigDecimal latestTemperature,
+        BigDecimal latestHumidity,
+        BigDecimal latestCurrent,
+        BigDecimal latestWireTemperature,
+        BigDecimal latestCoValue,
+        String latestBeepStatus,
         LocalDateTime latestTimestamp) {
 }

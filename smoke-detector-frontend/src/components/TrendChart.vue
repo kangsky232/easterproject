@@ -15,6 +15,18 @@ const device = computed(() => store.selectedDevice)
 const statusMeta = computed(() => DEVICE_STATUS[device.value?.status ?? 'offline'])
 const heroDisplay = useCountUp(() => device.value?.latestConcentration, 500, 2)
 
+function metric(value: number | null | undefined): string {
+  return value == null ? '--' : Number(value).toFixed(2)
+}
+
+function beepLabel(status: string | null | undefined): string {
+  if (!status) return '--'
+  const normalized = status.toUpperCase()
+  if (normalized === 'ON') return '开启'
+  if (normalized === 'OFF') return '关闭'
+  return status
+}
+
 const RANGES = [
   { hours: 0, label: '实时' },
   { hours: 24, label: '24小时' },
@@ -169,6 +181,77 @@ watch(
         <span :style="{ color: statusMeta.color }">{{ statusMeta.label }}</span> · 每10秒刷新
       </div>
     </div>
+    <div class="sensor-metrics" aria-label="实时传感器数据">
+      <div class="sensor-metric">
+        <span>环境温度</span><strong>{{ metric(device?.latestTemperature) }}</strong><small>℃</small>
+      </div>
+      <div class="sensor-metric">
+        <span>环境湿度</span><strong>{{ metric(device?.latestHumidity) }}</strong><small>%</small>
+      </div>
+      <div class="sensor-metric">
+        <span>设备电流</span><strong>{{ metric(device?.latestCurrent) }}</strong>
+      </div>
+      <div class="sensor-metric">
+        <span>线缆温度</span><strong>{{ metric(device?.latestWireTemperature) }}</strong><small>℃</small>
+      </div>
+      <div class="sensor-metric">
+        <span>CO 值</span><strong>{{ metric(device?.latestCoValue) }}</strong>
+      </div>
+      <div class="sensor-metric">
+        <span>蜂鸣器</span><strong class="beep-status">{{ beepLabel(device?.latestBeepStatus) }}</strong>
+      </div>
+    </div>
     <div ref="chartEl" class="chart"></div>
   </section>
 </template>
+
+<style scoped>
+.sensor-metrics {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(90px, 1fr));
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+
+.sensor-metric {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  white-space: nowrap;
+}
+
+.sensor-metric span {
+  display: block;
+  margin-bottom: 4px;
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: 11px;
+  text-overflow: ellipsis;
+}
+
+.sensor-metric strong {
+  color: var(--ink-1);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sensor-metric small {
+  margin-left: 3px;
+  color: var(--ink-3);
+  font-size: 10px;
+}
+
+.sensor-metric .beep-status {
+  color: var(--good);
+}
+
+@media (max-width: 1280px) {
+  .sensor-metrics { grid-template-columns: repeat(3, minmax(90px, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .sensor-metrics { grid-template-columns: repeat(2, minmax(90px, 1fr)); }
+}
+</style>

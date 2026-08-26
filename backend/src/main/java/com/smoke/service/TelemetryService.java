@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +48,12 @@ public class TelemetryService {
         smokeData.setDeviceId(device.getDeviceId());
         smokeData.setMessageId(normalizeMessageId(request.messageId()));
         smokeData.setConcentration(concentration);
+        smokeData.setTemperature(twoDecimals(request.temperature()));
+        smokeData.setHumidity(twoDecimals(request.humidity()));
+        smokeData.setCurrentValue(twoDecimals(request.current()));
+        smokeData.setWireTemperature(twoDecimals(request.wireTemperature()));
+        smokeData.setCoValue(twoDecimals(request.coValue()));
+        smokeData.setBeepStatus(normalizeBeepStatus(request.beepStatus()));
         smokeData.setTimestamp(request.timestamp() == null ? now : request.timestamp());
         try {
             smokeDataMapper.insert(smokeData);
@@ -88,5 +95,15 @@ public class TelemetryService {
 
     private boolean exceedsThreshold(BigDecimal concentration, int threshold) {
         return concentration.compareTo(BigDecimal.valueOf(threshold)) >= 0;
+    }
+
+    private BigDecimal twoDecimals(BigDecimal value) {
+        return value == null ? null : value.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private String normalizeBeepStatus(String beepStatus) {
+        return beepStatus == null || beepStatus.isBlank()
+                ? null
+                : beepStatus.trim().toUpperCase(Locale.ROOT);
     }
 }

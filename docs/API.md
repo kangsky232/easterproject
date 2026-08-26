@@ -93,13 +93,13 @@ Authorization: Bearer <token>
 
 ## 设备
 
-- `GET /api/devices`：分页查询已绑定设备，并返回每台设备的最新浓度。
-- `GET /api/devices/{id}`：查询设备资料和最新浓度。
+- `GET /api/devices`：分页查询已绑定设备，并返回每台设备的最新传感器数据。
+- `GET /api/devices/{id}`：查询设备资料和最新传感器数据。
 - `POST /api/devices/bind`：绑定设备。
 - `PUT /api/devices/{id}`：修改设备名称和安装位置，设备编号不可修改。
 - `DELETE /api/devices/{id}`：软解绑设备，保留设备及历史监测数据。
-- `GET /api/devices/{id}/current`：查询最新浓度。
-- `GET /api/devices/{id}/history`：查询历史浓度。
+- `GET /api/devices/{id}/current`：查询最新传感器数据。
+- `GET /api/devices/{id}/history`：查询原始历史传感器数据。
 - `GET /api/devices/{id}/trend`：按时间桶聚合历史浓度，返回平均值、最小值、最大值和样本数。
 - `PUT /api/devices/{id}/threshold`：设置烟雾阈值。
 
@@ -139,11 +139,11 @@ GET /api/devices/1/history?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&lim
 GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucketMinutes=30
 ```
 
-最新浓度、历史浓度、趋势平均/最小/最大值以及烟雾告警触发浓度均为 JSON 数字，可包含两位小数；阈值当前仍为正整数。
+烟雾浓度、环境温湿度、电流、线缆温度、CO 值、趋势统计值和烟雾告警触发浓度均为 JSON 数字，可包含两位小数；蜂鸣器状态为字符串；阈值当前仍为正整数。旧历史数据的新增字段可能为 `null`。
 
 ## 数据接入
 
-- `POST /api/telemetry`：上报烟雾浓度，同时刷新设备在线状态并判断阈值。
+- `POST /api/telemetry`：上报烟雾浓度和可选扩展传感器数据，同时刷新设备在线状态并判断烟雾阈值。
 - `POST /api/heartbeat`：上报心跳；设备恢复在线时自动处理已有离线告警。
 
 浓度上报：
@@ -152,12 +152,18 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 {
   "deviceId": "SMOKE-001",
   "concentration": 20.37,
+  "temperature": 27.43,
+  "humidity": 59.42,
+  "current": 2.01,
+  "wireTemperature": 28.18,
+  "coValue": 0.93,
+  "beepStatus": "OFF",
   "messageId": "SMOKE-001-20260822-0001",
   "timestamp": "2026-08-22T10:00:00"
 }
 ```
 
-`concentration` 范围为 `0`–`1000000`，服务端四舍五入保留两位小数。`messageId` 和 `timestamp` 可选；设备重试时应复用同一 `messageId`，服务端会返回 `duplicate: true` 且不会重复入库。
+`concentration` 范围为 `0`–`1000000`。`temperature`、`humidity`、`current`、`wireTemperature`、`coValue` 和 `beepStatus` 可选；数值由服务端四舍五入保留两位小数，蜂鸣器状态会转为大写。`messageId` 和 `timestamp` 可选；设备重试时应复用同一 `messageId`，服务端会返回 `duplicate: true` 且不会重复入库。
 
 心跳上报：
 
@@ -171,7 +177,7 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 
 ### MQTT 入站
 
-设置 `MQTT_ENABLED=true` 后，后端会连接配置的 Broker 并订阅 `MQTT_TOPIC`。当前适配器用于接收华为云 IoTDA 规则转发消息，从 `Smoke_Value` 解析小数浓度，再复用同一遥测服务完成入库、在线状态和阈值判断。详细 payload、凭据和 Instance ID 说明见 [硬件接入文档](../hardware/README.md)。
+设置 `MQTT_ENABLED=true` 后，后端会连接配置的 Broker 并订阅 `MQTT_TOPIC`。当前适配器用于接收华为云 IoTDA 规则转发消息，解析 `Smoke_Value`、`Temperature`、`Humidity`、`Current`、`WireTemperature`、`CO_Value` 和 `BeepStatus`，再复用同一遥测服务完成入库、在线状态和烟雾阈值判断。详细 payload、凭据和 Instance ID 说明见 [硬件接入文档](../hardware/README.md)。
 
 `GET /api/system/capabilities` 中的 `mqtt=CONNECTED` 只说明后端订阅连接正常，不代表设备仍在上报。设备在线状态以最后心跳/遥测时间为准。
 

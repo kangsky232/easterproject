@@ -45,8 +45,17 @@ class TelemetryServiceTest {
         when(alertService.createSmokeAlertIfAbsent(device, concentration, 2000)).thenReturn(alert);
         TelemetryService service = new TelemetryService(deviceMapper, smokeDataMapper, alertService);
 
-        TelemetryResponse response = service.record(
-                new TelemetryRequest("SMOKE-001", concentration, "msg-001", null));
+        TelemetryResponse response = service.record(new TelemetryRequest(
+                "SMOKE-001",
+                concentration,
+                new BigDecimal("27.429"),
+                new BigDecimal("59.417"),
+                new BigDecimal("2.010"),
+                new BigDecimal("28.181"),
+                new BigDecimal("0.929"),
+                "off",
+                "msg-001",
+                null));
 
         assertTrue(response.accepted());
         assertFalse(response.duplicate());
@@ -54,6 +63,12 @@ class TelemetryServiceTest {
         assertEquals(10L, response.alert().getId());
         assertEquals(1, device.getStatus());
         assertEquals(new BigDecimal("2500.25"), response.record().getConcentration());
+        assertEquals(new BigDecimal("27.43"), response.record().getTemperature());
+        assertEquals(new BigDecimal("59.42"), response.record().getHumidity());
+        assertEquals(new BigDecimal("2.01"), response.record().getCurrentValue());
+        assertEquals(new BigDecimal("28.18"), response.record().getWireTemperature());
+        assertEquals(new BigDecimal("0.93"), response.record().getCoValue());
+        assertEquals("OFF", response.record().getBeepStatus());
         verify(smokeDataMapper).insert(response.record());
         verify(deviceMapper).updateById(device);
         verify(alertService).resolveOfflineAlerts("SMOKE-001");

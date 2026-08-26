@@ -8,6 +8,12 @@ public record CurrentReadingResponse(
         String deviceId,
         String deviceName,
         BigDecimal concentration,
+        BigDecimal temperature,
+        BigDecimal humidity,
+        BigDecimal current,
+        BigDecimal wireTemperature,
+        BigDecimal coValue,
+        String beepStatus,
         LocalDateTime timestamp,
         Integer threshold,
         boolean online) {

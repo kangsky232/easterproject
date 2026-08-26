@@ -18,6 +18,12 @@ Content-Type: application/json
 {
   "deviceId": "SMOKE-001",
   "concentration": 20.37,
+  "temperature": 27.43,
+  "humidity": 59.42,
+  "current": 2.01,
+  "wireTemperature": 28.18,
+  "coValue": 0.93,
+  "beepStatus": "OFF",
   "messageId": "SMOKE-001-20260824-0001",
   "timestamp": "2026-08-24T15:00:00"
 }
@@ -34,7 +40,8 @@ Content-Type: application/json
 ```
 
 - `messageId` 用于幂等；设备重试必须复用原值。
-- `concentration` 接受 JSON 数字，范围为 `0`–`1000000`；后端按四舍五入保留两位小数。
+- `concentration`、`temperature`、`humidity`、`current`、`wireTemperature` 和 `coValue` 均接受 JSON 数字；除烟雾浓度外的 5 个数值为可选字段，后端统一按四舍五入保留两位小数。
+- `beepStatus` 可选，建议使用 `ON` / `OFF`，后端会统一转为大写。
 - `battery` 范围为 `0`–`100`，可不传。
 - 开发配置默认可关闭设备令牌校验，生产配置强制开启。
 - 令牌遗失或泄露时，管理员调用 `POST /api/devices/{id}/credentials` 轮换。
@@ -62,7 +69,15 @@ IoTDA 规则引擎把设备属性消息转发到 MQTT 后，Spring Boot 使用�
       "services": [
         {
           "service_id": "Smoke",
-          "properties": {"Smoke_Value": 20.37}
+          "properties": {
+            "Temperature": 27.43,
+            "Humidity": 59.42,
+            "Smoke_Value": 20.37,
+            "Current": 2.01,
+            "WireTemperature": 28.18,
+            "CO_Value": 0.93,
+            "BeepStatus": "OFF"
+          }
         }
       ]
     }
@@ -72,9 +87,21 @@ IoTDA 规则引擎把设备属性消息转发到 MQTT 后，Spring Boot 使用�
 
 后端也兼容 IoTDA 通知结构中的 `notify_data.header.device_id`、`notify_data.body.services`，以及顶层 `device_id`、`services`。如果 topic 使用 `$oc/devices/{deviceId}/...`，还可从 topic 提取设备编号。设备必须已经在平台绑定，否则消息会被忽略。
 
-`Smoke_Value` 必须是 JSON 数字。后端会保留两位小数并将遥测同时作为设备在线心跳。`GET /api/system/capabilities` 中的 `mqtt=CONNECTED` 只说明后端已连接 Broker，不代表硬件正在上报；是否在线应查看设备的 `lastHeartbeat` 和最新数据时间。
+`Smoke_Value` 必须是 JSON 数字，其余 6 个属性可选。后端支持以下华为云属性名：
 
-旧版本曾把 `Smoke_Value` 强制转换为整数，因此历史记录中已经丢失的小数无法恢复。升级已有数据库时执行 `docs/migrations/20260826_decimal_concentration.sql`。
+| 华为云属性 | 后端字段 | 说明 |
+| --- | --- | --- |
+| `Smoke_Value` | `concentration` | 烟雾浓度，必填 |
+| `Temperature` | `temperature` | 环境温度 |
+| `Humidity` | `humidity` | 环境湿度 |
+| `Current` | `current` | 设备电流 |
+| `WireTemperature` | `wireTemperature` | 线缆温度 |
+| `CO_Value` | `coValue` | CO 值 |
+| `BeepStatus` | `beepStatus` | 蜂鸣器状态 |
+
+数值字段入库时保留两位小数，遥测同时作为设备在线心跳。属性单位以华为云产品模型中的定义为准；项目不自动猜测 `Current` 和 `CO_Value` 的单位。`GET /api/system/capabilities` 中的 `mqtt=CONNECTED` 只说明后端已连接 Broker，不代表硬件正在上报；是否在线应查看设备的 `lastHeartbeat` 和最新数据时间。
+
+旧版本曾把 `Smoke_Value` 强制转换为整数，因此历史记录中已经丢失的小数无法恢复。升级已有数据库时依次执行 `docs/migrations/20260826_decimal_concentration.sql` 和 `docs/migrations/20260826_extended_sensor_metrics.sql`。
 
 ## 尚未实现：MQTT 下行
 
