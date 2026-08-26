@@ -44,5 +44,5 @@ export const TOKEN_KEY = 'smart-smoke.token'
 export const USER_KEY = 'smart-smoke.user'
 
 export const MAX_CHART_POINTS = 120
-export const REFRESH_MS = 15_000
+export const REFRESH_MS = 10_000
 export const MAX_REFRESH_MS = 60_000

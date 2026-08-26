@@ -23,6 +23,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -83,7 +84,7 @@ class DeviceServiceTest {
         device.setStatus(0);
         device.setBound(1);
         SmokeData reading = new SmokeData();
-        reading.setConcentration(380);
+        reading.setConcentration(new BigDecimal("380.25"));
         reading.setTimestamp(LocalDateTime.of(2026, 8, 22, 10, 0));
         when(deviceMapper.selectById(1L)).thenReturn(device);
         when(smokeDataMapper.selectOne(any())).thenReturn(reading);
@@ -91,7 +92,7 @@ class DeviceServiceTest {
 
         CurrentReadingResponse response = service.current(1L);
 
-        assertEquals(380, response.concentration());
+        assertEquals(new BigDecimal("380.25"), response.concentration());
         assertFalse(response.online());
     }
 
@@ -122,7 +123,7 @@ class DeviceServiceTest {
         devices.setTotal(1);
         SmokeData reading = new SmokeData();
         reading.setDeviceId("SMOKE-001");
-        reading.setConcentration(360);
+        reading.setConcentration(new BigDecimal("360.75"));
         reading.setTimestamp(LocalDateTime.of(2026, 8, 22, 10, 5));
         when(deviceMapper.selectPage(
                 org.mockito.ArgumentMatchers.<Page<Device>>any(),
@@ -133,7 +134,7 @@ class DeviceServiceTest {
         PageResponse<DeviceSummaryResponse> result = service.list(null, null, 1, 20);
 
         assertEquals(1, result.total());
-        assertEquals(360, result.records().get(0).latestConcentration());
+        assertEquals(new BigDecimal("360.75"), result.records().get(0).latestConcentration());
         verify(smokeDataMapper).selectLatestByDeviceIds(List.of("SMOKE-001"));
     }
 
@@ -144,9 +145,9 @@ class DeviceServiceTest {
         device.setDeviceId("SMOKE-001");
         device.setBound(1);
         when(deviceMapper.selectById(1L)).thenReturn(device);
-        SmokeData first = reading(100, LocalDateTime.of(2026, 8, 22, 10, 5));
-        SmokeData second = reading(300, LocalDateTime.of(2026, 8, 22, 10, 20));
-        SmokeData third = reading(500, LocalDateTime.of(2026, 8, 22, 10, 50));
+        SmokeData first = reading("100.10", LocalDateTime.of(2026, 8, 22, 10, 5));
+        SmokeData second = reading("300.20", LocalDateTime.of(2026, 8, 22, 10, 20));
+        SmokeData third = reading("500.30", LocalDateTime.of(2026, 8, 22, 10, 50));
         when(smokeDataMapper.selectList(any())).thenReturn(List.of(first, second, third));
         DeviceService service = new DeviceService(deviceMapper, smokeDataMapper, alertService);
 
@@ -157,15 +158,15 @@ class DeviceServiceTest {
                 60);
 
         assertEquals(1, result.size());
-        assertEquals("300.00", result.get(0).average().toPlainString());
-        assertEquals(100, result.get(0).minimum());
-        assertEquals(500, result.get(0).maximum());
+        assertEquals("300.20", result.get(0).average().toPlainString());
+        assertEquals(new BigDecimal("100.10"), result.get(0).minimum());
+        assertEquals(new BigDecimal("500.30"), result.get(0).maximum());
         assertEquals(3, result.get(0).samples());
     }
 
-    private SmokeData reading(int concentration, LocalDateTime timestamp) {
+    private SmokeData reading(String concentration, LocalDateTime timestamp) {
         SmokeData reading = new SmokeData();
-        reading.setConcentration(concentration);
+        reading.setConcentration(new BigDecimal(concentration));
         reading.setTimestamp(timestamp);
         return reading;
     }

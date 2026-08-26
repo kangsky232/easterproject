@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -15,7 +16,7 @@ public class SmokeData {
     private Long id;
     private String deviceId;
     private String messageId;
-    private Integer concentration;
+    private BigDecimal concentration;
     private LocalDateTime timestamp;
     private LocalDateTime createdAt;
 }

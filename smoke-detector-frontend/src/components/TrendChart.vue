@@ -5,7 +5,7 @@ import { DEVICE_STATUS } from '@/constants'
 import { theme } from '@/theme'
 import { useDashboardStore } from '@/store/dashboard'
 import { useCountUp } from '@/composables/useCountUp'
-import { conc, fmtTrendTime } from '@/utils/format'
+import { conc } from '@/utils/format'
 
 const store = useDashboardStore()
 const chartEl = ref<HTMLDivElement | null>(null)
@@ -16,6 +16,7 @@ const statusMeta = computed(() => DEVICE_STATUS[device.value?.status ?? 'offline
 const heroDisplay = useCountUp(() => device.value?.latestConcentration, 500, 2)
 
 const RANGES = [
+  { hours: 0, label: '实时' },
   { hours: 24, label: '24小时' },
   { hours: 24 * 7, label: '7天' },
   { hours: 24 * 30, label: '30天' },
@@ -24,7 +25,13 @@ const RANGES = [
 function render(): void {
   if (!chart) return
   const threshold = device.value?.threshold ?? 2000
-  const spanHours = store.trendHours
+
+  // 构造 [时间戳, 浓度] 数据
+  const data = store.chartTimes.map((iso, i) => {
+    const ts = new Date(iso).getTime()
+    return [ts, store.chartValues[i] ?? 0]
+  })
+
   chart.setOption(
     {
       backgroundColor: 'transparent',
@@ -36,19 +43,36 @@ function render(): void {
         textStyle: { color: theme.ink1, fontSize: 12 },
         axisPointer: { type: 'line', lineStyle: { color: theme.ink3, width: 1 } },
         formatter: (params: unknown) => {
-          const list = params as { axisValue?: string; value?: number | string }[]
-          const value = list[0]?.value
-          const displayValue = value === undefined ? '--' : conc(Number(value))
-          return `${list[0]?.axisValue || ''}<br/>烟雾浓度：<b>${displayValue} ppm</b>`
+          const p = (params as any[])[0]
+          if (!p) return ''
+          const time = new Date(p.value[0])
+          const timeStr = `${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}:${String(time.getSeconds()).padStart(2, '0')}`
+          const val = p.value[1]
+          return `${timeStr}<br/>烟雾浓度：<b>${conc(val)} ppm</b>`
         },
       },
       xAxis: {
-        type: 'category',
-        data: store.chartTimes.map((iso) => fmtTrendTime(iso, spanHours)),
-        boundaryGap: false,
+        type: 'time',
+        interval: store.trendHours === 0 ? 10_000 : undefined,
+        minInterval: store.trendHours === 0 ? 10_000 : 60_000,
+        axisLabel: {
+          color: theme.ink3,
+          fontSize: 11,
+          hideOverlap: true,
+          formatter: (value: number) => {
+            const d = new Date(value)
+            const minute = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+            return store.trendHours === 0
+              ? `${minute}:${String(d.getSeconds()).padStart(2, '0')}`
+              : minute
+          },
+        },
         axisLine: { lineStyle: { color: theme.baseline } },
         axisTick: { show: false },
-        axisLabel: { color: theme.ink3, fontSize: 11 },
+        splitLine: {
+          show: true,
+          lineStyle: { color: theme.grid },
+        },
       },
       yAxis: {
         type: 'value',
@@ -75,7 +99,7 @@ function render(): void {
         {
           name: '烟雾浓度',
           type: 'line',
-          data: store.chartValues,
+          data: data,                               // 使用二维数组
           showSymbol: false,
           smooth: false,
           lineStyle: { width: 2, color: theme.accent },
@@ -142,7 +166,7 @@ watch(
       <div v-if="!device" class="hero-meta">选择设备查看</div>
       <div v-else class="hero-meta">
         {{ device.name || device.deviceCode }} · 阈值 {{ conc(device.threshold) }} ppm ·
-        <span :style="{ color: statusMeta.color }">{{ statusMeta.label }}</span>
+        <span :style="{ color: statusMeta.color }">{{ statusMeta.label }}</span> · 每10秒刷新
       </div>
     </div>
     <div ref="chartEl" class="chart"></div>

@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 public record TrendPointResponse(
         LocalDateTime bucketStart,
         BigDecimal average,
-        int minimum,
-        int maximum,
+        BigDecimal minimum,
+        BigDecimal maximum,
         long samples) {
 }

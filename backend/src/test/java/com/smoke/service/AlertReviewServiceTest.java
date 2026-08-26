@@ -11,6 +11,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
+
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -29,7 +31,7 @@ class AlertReviewServiceTest {
         AlertRecord alert = new AlertRecord();
         alert.setId(12L);
         alert.setAlertType(AlertRecord.TYPE_SMOKE);
-        alert.setConcentration(4000);
+        alert.setConcentration(new BigDecimal("4000.25"));
         alert.setThreshold(2000);
         when(alertRecordMapper.selectById(12L)).thenReturn(alert);
         AlertReviewService service = new AlertReviewService(alertRecordMapper, alertReviewMapper);
@@ -47,7 +49,7 @@ class AlertReviewServiceTest {
         AlertRecord alert = new AlertRecord();
         alert.setId(13L);
         alert.setAlertType(AlertRecord.TYPE_SMOKE);
-        alert.setConcentration(5000);
+        alert.setConcentration(new BigDecimal("5000.25"));
         alert.setThreshold(2000);
         alert.setStatus(AlertRecord.STATUS_RESOLVED);
         alert.setFalseAlarm(0);
@@ -66,7 +68,7 @@ class AlertReviewServiceTest {
         AlertRecord alert = new AlertRecord();
         alert.setId(14L);
         alert.setAlertType(AlertRecord.TYPE_SMOKE);
-        alert.setConcentration(5000);
+        alert.setConcentration(new BigDecimal("5000.25"));
         alert.setThreshold(2000);
         alert.setStatus(AlertRecord.STATUS_RESOLVED);
         alert.setFalseAlarm(1);

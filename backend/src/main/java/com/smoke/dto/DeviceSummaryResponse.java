@@ -1,5 +1,6 @@
 package com.smoke.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record DeviceSummaryResponse(
@@ -11,6 +12,6 @@ public record DeviceSummaryResponse(
         Integer threshold,
         Integer battery,
         LocalDateTime lastHeartbeat,
-        Integer latestConcentration,
+        BigDecimal latestConcentration,
         LocalDateTime latestTimestamp) {
 }

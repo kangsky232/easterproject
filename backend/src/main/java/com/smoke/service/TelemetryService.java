@@ -13,6 +13,8 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 @Service
@@ -37,13 +39,14 @@ public class TelemetryService {
         SmokeData duplicate = findDuplicate(request);
         if (duplicate != null) {
             return new TelemetryResponse(
-                    true, true, duplicate, duplicate.getConcentration() >= threshold, null);
+                    true, true, duplicate, exceedsThreshold(duplicate.getConcentration(), threshold), null);
         }
 
+        BigDecimal concentration = request.concentration().setScale(2, RoundingMode.HALF_UP);
         SmokeData smokeData = new SmokeData();
         smokeData.setDeviceId(device.getDeviceId());
         smokeData.setMessageId(normalizeMessageId(request.messageId()));
-        smokeData.setConcentration(request.concentration());
+        smokeData.setConcentration(concentration);
         smokeData.setTimestamp(request.timestamp() == null ? now : request.timestamp());
         try {
             smokeDataMapper.insert(smokeData);
@@ -52,7 +55,7 @@ public class TelemetryService {
             if (concurrentDuplicate != null) {
                 return new TelemetryResponse(
                         true, true, concurrentDuplicate,
-                        concurrentDuplicate.getConcentration() >= threshold, null);
+                        exceedsThreshold(concurrentDuplicate.getConcentration(), threshold), null);
             }
             throw exception;
         }
@@ -62,9 +65,9 @@ public class TelemetryService {
         deviceMapper.updateById(device);
         alertService.resolveOfflineAlerts(device.getDeviceId());
 
-        boolean thresholdExceeded = request.concentration() >= threshold;
+        boolean thresholdExceeded = exceedsThreshold(concentration, threshold);
         var alert = thresholdExceeded
-                ? alertService.createSmokeAlertIfAbsent(device, request.concentration(), threshold)
+                ? alertService.createSmokeAlertIfAbsent(device, concentration, threshold)
                 : null;
         return new TelemetryResponse(true, false, smokeData, thresholdExceeded, alert);
     }
@@ -81,5 +84,9 @@ public class TelemetryService {
 
     private String normalizeMessageId(String messageId) {
         return messageId == null || messageId.isBlank() ? null : messageId.trim();
+    }
+
+    private boolean exceedsThreshold(BigDecimal concentration, int threshold) {
+        return concentration.compareTo(BigDecimal.valueOf(threshold)) >= 0;
     }
 }

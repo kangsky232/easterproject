@@ -13,6 +13,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -99,7 +100,7 @@ public class AlertService {
     }
 
     @Transactional
-    public AlertRecord createSmokeAlertIfAbsent(Device device, int concentration, int threshold) {
+    public AlertRecord createSmokeAlertIfAbsent(Device device, BigDecimal concentration, int threshold) {
         return createIfAbsent(device.getDeviceId(), AlertRecord.TYPE_SMOKE, concentration, threshold);
     }
 
@@ -132,7 +133,7 @@ public class AlertService {
         }
     }
 
-    private AlertRecord create(String deviceId, int type, Integer concentration, Integer threshold) {
+    private AlertRecord create(String deviceId, int type, BigDecimal concentration, Integer threshold) {
         AlertRecord alert = new AlertRecord();
         alert.setDeviceId(deviceId);
         alert.setAlertType(type);
@@ -148,7 +149,7 @@ public class AlertService {
         return alert;
     }
 
-    private AlertRecord createIfAbsent(String deviceId, int type, Integer concentration, Integer threshold) {
+    private AlertRecord createIfAbsent(String deviceId, int type, BigDecimal concentration, Integer threshold) {
         AlertRecord active = findActive(deviceId, type);
         if (active != null) {
             return active;

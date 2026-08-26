@@ -20,6 +20,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -126,7 +128,7 @@ public class HuaweiMqttSubscriber implements MqttCallbackExtended {
         try {
             JsonNode root = objectMapper.readTree(message.getPayload());
             deviceId = resolveDeviceId(topic, root);
-            Integer concentration = extractConcentration(root);
+            BigDecimal concentration = extractConcentration(root);
             if (deviceId == null || concentration == null) {
                 log.warn("忽略无法解析的 MQTT 消息: topic={}, payload={}", topic,
                         new String(message.getPayload(), StandardCharsets.UTF_8));
@@ -160,7 +162,7 @@ public class HuaweiMqttSubscriber implements MqttCallbackExtended {
         return matcher.find() ? matcher.group(1) : null;
     }
 
-    private Integer extractConcentration(JsonNode root) {
+    private BigDecimal extractConcentration(JsonNode root) {
         for (String pointer : List.of("/devices/0/services", "/notify_data/body/services", "/services")) {
             JsonNode services = root.at(pointer);
             if (services.isMissingNode() || services.isNull() || !services.isArray() || services.isEmpty()) {
@@ -168,8 +170,8 @@ public class HuaweiMqttSubscriber implements MqttCallbackExtended {
             }
             JsonNode value = services.get(0).at("/properties/Smoke_Value");
             if (!value.isMissingNode() && !value.isNull()) {
-                // Smoke_Value 是浮点，直接取整（截断）映射到整数 concentration
-                return (int) value.asDouble();
+                // 保留华为云上报的真实小数，统一按两位小数存储和展示。
+                return value.decimalValue().setScale(2, RoundingMode.HALF_UP);
             }
         }
         return null;

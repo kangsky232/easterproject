@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -21,7 +22,7 @@ public class AlertRecord {
     private Long id;
     private String deviceId;
     private Integer alertType;
-    private Integer concentration;
+    private BigDecimal concentration;
     private Integer threshold;
     private Integer status;
     private Integer falseAlarm;

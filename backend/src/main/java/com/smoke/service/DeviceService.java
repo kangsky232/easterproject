@@ -276,21 +276,20 @@ public class DeviceService {
     }
 
     private static final class TrendAccumulator {
-        private long sum;
-        private int minimum = Integer.MAX_VALUE;
-        private int maximum = Integer.MIN_VALUE;
+        private BigDecimal sum = BigDecimal.ZERO;
+        private BigDecimal minimum;
+        private BigDecimal maximum;
         private long samples;
 
-        private void add(int value) {
-            sum += value;
-            minimum = Math.min(minimum, value);
-            maximum = Math.max(maximum, value);
+        private void add(BigDecimal value) {
+            sum = sum.add(value);
+            minimum = minimum == null || value.compareTo(minimum) < 0 ? value : minimum;
+            maximum = maximum == null || value.compareTo(maximum) > 0 ? value : maximum;
             samples++;
         }
 
         private TrendPointResponse toResponse(LocalDateTime bucketStart) {
-            BigDecimal average = BigDecimal.valueOf(sum)
-                    .divide(BigDecimal.valueOf(samples), 2, RoundingMode.HALF_UP);
+            BigDecimal average = sum.divide(BigDecimal.valueOf(samples), 2, RoundingMode.HALF_UP);
             return new TrendPointResponse(bucketStart, average, minimum, maximum, samples);
         }
     }

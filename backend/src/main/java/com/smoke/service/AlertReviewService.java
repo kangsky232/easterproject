@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Service
@@ -45,7 +46,8 @@ public class AlertReviewService {
             if (alert.getAlertType() == AlertRecord.TYPE_OFFLINE) {
                 return "历史复核：该设备离线告警已恢复并归档，不代表设备当前仍处于离线状态。";
             }
-            int historicalConcentration = alert.getConcentration() == null ? 0 : alert.getConcentration();
+            BigDecimal historicalConcentration = alert.getConcentration() == null
+                    ? BigDecimal.ZERO : alert.getConcentration();
             int historicalThreshold = alert.getThreshold() == null ? 0 : alert.getThreshold();
             return "历史复核：该烟雾告警已处置并归档，不代表当前仍存在火情。触发时浓度为 "
                     + historicalConcentration + "，阈值为 " + historicalThreshold + "。";
@@ -53,9 +55,9 @@ public class AlertReviewService {
         if (alert.getAlertType() == AlertRecord.TYPE_OFFLINE) {
             return "复核结论：设备已离线。请检查供电、网络与心跳上报，恢复后系统会自动关闭离线告警。";
         }
-        int concentration = alert.getConcentration() == null ? 0 : alert.getConcentration();
+        BigDecimal concentration = alert.getConcentration() == null ? BigDecimal.ZERO : alert.getConcentration();
         int threshold = alert.getThreshold() == null ? 0 : alert.getThreshold();
-        if (threshold > 0 && concentration >= threshold * 2) {
+        if (threshold > 0 && concentration.compareTo(BigDecimal.valueOf((long) threshold * 2)) >= 0) {
             return "复核结论：高风险。浓度已超过阈值两倍，请立即疏散并确认现场火情。";
         }
         return "复核结论：烟雾浓度已超过阈值。请派人现场核验，并在排除火情后标记为误报。";

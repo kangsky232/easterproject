@@ -70,7 +70,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
   })
 
   const selectedId = ref<number | null>(null)
-  const trendHours = ref(24)
+  // 0 表示实时模式：展示最近 120 条原始数据，并随全局轮询每 10 秒刷新。
+  const trendHours = ref(0)
   const chartTimes = ref<string[]>([])
   const chartValues = ref<number[]>([])
 
@@ -210,10 +211,10 @@ export const useDashboardStore = defineStore('dashboard', () => {
     if (selectedId.value !== null && !devices.value.some((device) => device.id === selectedId.value)) {
       selectedId.value = null
     }
-    const needsTrend = selectedId.value === null && devices.value.length > 0
-    if (needsTrend) selectedId.value = devices.value[0].id
+    if (selectedId.value === null && devices.value.length > 0) {
+      selectedId.value = devices.value[0].id
+    }
     syncDeviceStatuses()
-    if (needsTrend) await fetchTrend(selectedId.value as number)
   }
 
   async function fetchAlarms(): Promise<void> {
@@ -225,6 +226,13 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   async function fetchTrend(deviceId: number): Promise<void> {
     try {
+      if (trendHours.value === 0) {
+        const records = (await api.fetchHistory(deviceId)).slice().reverse()
+        chartTimes.value = records.map((item) => item.timestamp)
+        chartValues.value = records.map((item) => Number(item.concentration ?? 0))
+        return
+      }
+
       const end = new Date()
       const start = new Date(end.getTime() - trendHours.value * 3_600_000)
       const records = await api.fetchTrend(deviceId, {
@@ -267,6 +275,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
     ])
     for (const result of results) {
       if (result.status === 'rejected') console.warn('刷新数据失败：', result.reason)
+    }
+    if (selectedId.value !== null) {
+      await fetchTrend(selectedId.value)
     }
     loading.value = false
   }

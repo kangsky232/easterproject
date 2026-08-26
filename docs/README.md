@@ -9,6 +9,7 @@
 - [SMART_QA_OPTIMIZATION.md](SMART_QA_OPTIMIZATION.md)：智能问答架构、已完成优化、测试基线和后续路线。
 - [DEPLOYMENT.md](DEPLOYMENT.md)：生产配置、容器化、上线检查和运维要求。
 - [schema.sql](schema.sql)：MySQL 初始建表脚本。
+- [migrations/20260826_decimal_concentration.sql](migrations/20260826_decimal_concentration.sql)：已有数据库的浓度小数升级脚本。
 - [硬件说明](../hardware/README.md)：设备上报方式和 MQTT 主题约定。
 - [视觉服务说明](../ai-vision/README.md)：当前占位接口和正式接入条件。
 

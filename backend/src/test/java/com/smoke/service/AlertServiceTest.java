@@ -9,6 +9,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
@@ -29,12 +31,12 @@ class AlertServiceTest {
         Device device = new Device();
         device.setDeviceId("SMOKE-001");
 
-        service.createSmokeAlertIfAbsent(device, 2500, 2000);
+        service.createSmokeAlertIfAbsent(device, new BigDecimal("2500.25"), 2000);
 
         ArgumentCaptor<AlertRecord> captor = ArgumentCaptor.forClass(AlertRecord.class);
         verify(alertRecordMapper).insert(captor.capture());
         assertEquals(AlertRecord.TYPE_SMOKE, captor.getValue().getAlertType());
-        assertEquals(2500, captor.getValue().getConcentration());
+        assertEquals(new BigDecimal("2500.25"), captor.getValue().getConcentration());
         assertEquals(2000, captor.getValue().getThreshold());
         assertEquals(AlertRecord.STATUS_PENDING, captor.getValue().getStatus());
     }
@@ -48,7 +50,7 @@ class AlertServiceTest {
         Device device = new Device();
         device.setDeviceId("SMOKE-001");
 
-        AlertRecord result = service.createSmokeAlertIfAbsent(device, 2500, 2000);
+        AlertRecord result = service.createSmokeAlertIfAbsent(device, new BigDecimal("2500.25"), 2000);
 
         assertSame(existing, result);
         verify(alertRecordMapper, never()).insert(any(AlertRecord.class));
