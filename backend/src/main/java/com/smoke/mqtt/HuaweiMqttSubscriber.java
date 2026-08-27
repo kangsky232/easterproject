@@ -10,6 +10,7 @@ import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
+import org.eclipse.paho.client.mqttv3.IMqttToken;
 import org.eclipse.paho.client.mqttv3.MqttCallbackExtended;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
@@ -56,6 +57,9 @@ public class HuaweiMqttSubscriber implements MqttCallbackExtended {
     @Value("${mqtt.topic:smoke/report}")
     private String topic;
 
+    @Value("${mqtt.subscribe-timeout-ms:10000}")
+    private long subscribeTimeoutMs;
+
     private volatile MqttClient client;
 
     @PostConstruct
@@ -94,7 +98,8 @@ public class HuaweiMqttSubscriber implements MqttCallbackExtended {
             options.setConnectionTimeout(10);
             newClient.setCallback(this);
             newClient.connect(options);
-            newClient.subscribe(topic, QOS);
+            IMqttToken subscribeToken = newClient.subscribeWithResponse(topic, QOS);
+            subscribeToken.waitForCompletion(subscribeTimeoutMs);
             this.client = newClient;
             log.info("MQTT 已连接: {}，订阅主题 {}", broker, topic);
         } catch (MqttException exception) {
@@ -237,7 +242,7 @@ public class HuaweiMqttSubscriber implements MqttCallbackExtended {
             return;
         }
         try {
-            target.disconnect();
+            target.disconnectForcibly(1000, 1000);
         } catch (MqttException ignored) {
         }
         try {

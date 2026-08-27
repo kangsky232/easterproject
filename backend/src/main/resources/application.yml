@@ -11,3 +11,11 @@ mybatis-plus:
   mapper-locations: classpath:mapper/*.xml
   configuration:
     map-underscore-to-camel-case: true
+
+app:
+  dingtalk:
+    enabled: ${DINGTALK_ENABLED:false}
+    client-id: ${DINGTALK_CLIENT_ID:}
+    client-secret: ${DINGTALK_CLIENT_SECRET:}
+    # For an internal-app robot this normally equals Client ID (the old AppKey).
+    robot-code: ${DINGTALK_ROBOT_CODE:}

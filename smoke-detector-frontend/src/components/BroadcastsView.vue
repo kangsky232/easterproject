@@ -10,6 +10,12 @@ function statusClass(status: number): string {
   if (status === 2) return 'broadcast-status--failed'
   return 'broadcast-status--pending'
 }
+
+function deliveryLabel(status: number): string {
+  if (status === 1) return '再次下发'
+  if (status === 2) return '重新下发'
+  return '立即下发'
+}
 </script>
 
 <template>
@@ -32,11 +38,12 @@ function statusClass(status: number): string {
           <th>状态</th>
           <th>创建时间</th>
           <th>执行时间</th>
+          <th>操作</th>
         </tr>
       </thead>
       <tbody>
         <tr v-if="!store.broadcasts.length">
-          <td colspan="7" class="empty">暂无广播指令记录。</td>
+          <td colspan="8" class="empty">暂无广播指令记录。</td>
         </tr>
         <tr v-for="broadcast in store.broadcasts" v-else :key="broadcast.id">
           <td>#{{ broadcast.id }}</td>
@@ -50,6 +57,25 @@ function statusClass(status: number): string {
           </td>
           <td>{{ fmtDate(broadcast.createdAt) }}</td>
           <td>{{ broadcast.executedAt ? fmtDate(broadcast.executedAt) : '—' }}</td>
+          <td class="broadcast-actions">
+            <button
+              v-if="store.canBroadcast"
+              class="btn-mini"
+              :disabled="store.broadcastActionId !== null || store.broadcastPersistenceOnly"
+              :title="store.broadcastPersistenceOnly ? '钉钉广播尚未配置' : deliveryLabel(broadcast.status)"
+              @click="store.deliverBroadcast(broadcast.id)"
+            >
+              {{ store.broadcastActionId === broadcast.id ? '处理中…' : deliveryLabel(broadcast.status) }}
+            </button>
+            <button
+              v-if="store.canDeleteBroadcast"
+              class="btn-mini btn-mini-danger"
+              :disabled="store.broadcastActionId !== null"
+              @click="store.deleteBroadcast(broadcast.id)"
+            >
+              删除
+            </button>
+          </td>
         </tr>
       </tbody>
     </table>

@@ -43,6 +43,20 @@ public class FeatureSchemaInitializer implements InitializingBean {
                     CONSTRAINT fk_notification_alert FOREIGN KEY (alert_id) REFERENCES alert_record(id)
                 )
                 """);
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS dingtalk_recipient (
+                    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                    user_id VARCHAR(128) NOT NULL,
+                    display_name VARCHAR(100) NULL,
+                    enabled TINYINT NOT NULL DEFAULT 1,
+                    first_seen_at DATETIME NOT NULL,
+                    last_seen_at DATETIME NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    updated_at DATETIME NOT NULL,
+                    UNIQUE KEY uk_dingtalk_recipient_user (user_id),
+                    INDEX idx_dingtalk_recipient_enabled (enabled)
+                )
+                """);
     }
 
     private void addFalseAlarmColumn() {

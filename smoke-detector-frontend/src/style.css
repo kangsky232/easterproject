@@ -431,6 +431,9 @@ body {
 }
 .btn-mini:hover { border-color: var(--accent); color: var(--accent); }
 .btn-mini-danger:hover { border-color: var(--critical); color: var(--critical); }
+.btn-mini:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-mini:disabled:hover { border-color: rgba(255, 255, 255, 0.16); color: var(--ink-2); }
+.broadcast-actions { white-space: nowrap; }
 
 /* ---------- 系统能力说明 / 广播记录 ---------- */
 .capability-note {

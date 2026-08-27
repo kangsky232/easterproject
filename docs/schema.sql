@@ -130,3 +130,18 @@ CREATE TABLE IF NOT EXISTS broadcast_log (
     CONSTRAINT fk_broadcast_alert FOREIGN KEY (trigger_alert_id) REFERENCES alert_record(id),
     CONSTRAINT chk_broadcast_status CHECK (status IN (0, 1, 2))
 );
+
+-- 钉钉机器人单聊接收人；员工首次私聊机器人时自动绑定
+CREATE TABLE IF NOT EXISTS dingtalk_recipient (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id VARCHAR(128) NOT NULL,
+    display_name VARCHAR(100),
+    enabled TINYINT NOT NULL DEFAULT 1,
+    first_seen_at DATETIME NOT NULL,
+    last_seen_at DATETIME NOT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    UNIQUE INDEX uk_dingtalk_recipient_user (user_id),
+    INDEX idx_dingtalk_recipient_enabled (enabled),
+    CONSTRAINT chk_dingtalk_recipient_enabled CHECK (enabled IN (0, 1))
+);

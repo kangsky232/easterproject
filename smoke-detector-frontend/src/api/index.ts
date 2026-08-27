@@ -99,8 +99,16 @@ export interface BroadcastPayload {
   triggerAlertId: number | null
 }
 
-export function createBroadcast(payload: BroadcastPayload): Promise<unknown> {
+export function createBroadcast(payload: BroadcastPayload): Promise<BroadcastRaw> {
   return api('/api/broadcasts', { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export function deliverBroadcast(id: number): Promise<BroadcastRaw> {
+  return api(`/api/broadcasts/${id}/deliver`, { method: 'POST' })
+}
+
+export function deleteBroadcast(id: number): Promise<BroadcastRaw> {
+  return api(`/api/broadcasts/${id}`, { method: 'DELETE' })
 }
 
 export function chat(question: string, alertId: number | null): Promise<ChatResponse> {

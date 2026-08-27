@@ -2,6 +2,7 @@ package com.smoke.controller;
 
 import com.smoke.mqtt.HuaweiMqttSubscriber;
 import com.smoke.service.RagClient;
+import com.smoke.service.DingTalkMessageService;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
@@ -75,8 +76,10 @@ class SystemControllerTest {
         RagClient ragClient = mock(RagClient.class);
         Environment environment = mock(Environment.class);
         HuaweiMqttSubscriber mqttSubscriber = mock(HuaweiMqttSubscriber.class);
+        DingTalkMessageService dingTalkMessageService = mock(DingTalkMessageService.class);
         when(ragClient.health()).thenReturn(health);
         when(environment.acceptsProfiles(any(Profiles.class))).thenReturn(production);
-        return new SystemController(jdbcTemplate, ragClient, environment, mqttSubscriber);
+        return new SystemController(
+                jdbcTemplate, ragClient, environment, mqttSubscriber, dingTalkMessageService);
     }
 }

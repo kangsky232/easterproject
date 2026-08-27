@@ -13,6 +13,7 @@ import com.smoke.mapper.AlertRecordMapper;
 import com.smoke.mapper.BroadcastLogMapper;
 import com.smoke.mapper.DeviceMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,11 +21,13 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BroadcastService {
 
     private final BroadcastLogMapper broadcastLogMapper;
     private final DeviceMapper deviceMapper;
     private final AlertRecordMapper alertRecordMapper;
+    private final DingTalkMessageService dingTalkMessageService;
 
     public PageResponse<BroadcastLog> list(String deviceId, Integer status, int page, int pageSize) {
         if (page < 1 || pageSize < 1 || pageSize > 200) {
@@ -70,6 +73,26 @@ public class BroadcastService {
         broadcast.setStatus(BroadcastLog.STATUS_PENDING);
         broadcast.setCreatedAt(LocalDateTime.now());
         broadcastLogMapper.insert(broadcast);
+
+        if (dingTalkMessageService.isConfigured()) {
+            deliverToDingTalk(broadcast);
+        }
+        return broadcast;
+    }
+
+    @Transactional
+    public BroadcastLog deliver(Long id) {
+        BroadcastLog broadcast = requireBroadcast(id);
+        if (!dingTalkMessageService.isConfigured()) {
+            throw new BusinessException(503, "钉钉广播尚未配置，无法下发");
+        }
+        return deliverToDingTalk(broadcast);
+    }
+
+    @Transactional
+    public BroadcastLog delete(Long id) {
+        BroadcastLog broadcast = requireBroadcast(id);
+        broadcastLogMapper.deleteById(id);
         return broadcast;
     }
 
@@ -83,6 +106,19 @@ public class BroadcastService {
             throw new BusinessException(409, "广播指令已经结束，不能修改结果");
         }
         broadcast.setStatus(status);
+        broadcast.setExecutedAt(LocalDateTime.now());
+        broadcastLogMapper.updateById(broadcast);
+        return broadcast;
+    }
+
+    private BroadcastLog deliverToDingTalk(BroadcastLog broadcast) {
+        try {
+            dingTalkMessageService.sendBroadcast(broadcast.getDeviceId(), broadcast.getContent());
+            broadcast.setStatus(BroadcastLog.STATUS_SUCCESS);
+        } catch (DingTalkMessageService.DingTalkDeliveryException exception) {
+            broadcast.setStatus(BroadcastLog.STATUS_FAILED);
+            log.warn("DingTalk delivery failed for broadcast {}: {}", broadcast.getId(), exception.getMessage());
+        }
         broadcast.setExecutedAt(LocalDateTime.now());
         broadcastLogMapper.updateById(broadcast);
         return broadcast;

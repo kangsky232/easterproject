@@ -1,6 +1,6 @@
 # 本地开发说明
 
-更新日期：2026-08-26。本说明以 Windows PowerShell 为例，默认采用非 Docker 启动方式。
+更新日期：2026-08-27。本说明以 Windows PowerShell 为例，默认采用非 Docker 启动方式。
 
 ## 组件与依赖
 
@@ -11,6 +11,7 @@
 | Vue/Vite 前端 | `5173` | 是 | 端口占用时 Vite 会自动选择下一个端口 |
 | RAG 服务 | `5001` | 否 | 不可用时后端使用内置安全规则降级 |
 | MQTT Broker/华为云 IoTDA | 由平台决定 | 否 | 后端已支持 MQTT 入站遥测；HTTP 联调不依赖它 |
+| 钉钉 Stream | 钉钉云端 | 否 | 启用后接收机器人私聊，并将网页广播下发到已绑定员工的钉钉单聊 |
 
 需要安装 JDK 17+、Maven 3.9+、Node.js 18+、npm 和 MySQL 8。
 
@@ -39,6 +40,12 @@ mysql -uroot smart_smoke -e "SOURCE docs/migrations/20260826_decimal_concentrati
 ```powershell
 cd backend
 mvn spring-boot:run
+```
+
+如需同时加载仓库根目录中被 Git 忽略的 `.env.mqtt.local` 和 `.env.dingtalk.local`，可在仓库根目录运行：
+
+```powershell
+.\scripts\start-backend.ps1
 ```
 
 验证：
@@ -71,7 +78,9 @@ python app.py
 
 MQTT 不影响登录、数据库接口和前端基本联调。需要接入华为云规则转发时，设置 `MQTT_ENABLED=true`、Broker、Access Key、Access Code、可选 Instance ID 和订阅主题。真实值可保存到仓库已忽略的 `.env.mqtt.local`，但 Spring Boot 不会自动读取该文件，启动进程或 IDE 必须显式加载这些环境变量。
 
-订阅器接收 `Smoke_Value`、`Temperature`、`Humidity`、`Current`、`WireTemperature`、`CO_Value` 和 `BeepStatus`，数值按两位小数入库。详细 payload 和配置见 [硬件与 MQTT 说明](../hardware/README.md)。当前 MQTT 只实现入站遥测，广播下行仍仅保存数据库记录。
+订阅器接收 `Smoke_Value`、`Temperature`、`Humidity`、`Current`、`WireTemperature`、`CO_Value` 和 `BeepStatus`，数值按两位小数入库。详细 payload 和配置见 [硬件与 MQTT 说明](../hardware/README.md)。MQTT 设备下行尚未实现；网页广播可通过钉钉机器人发送给手机端员工。
+
+钉钉接入使用 Stream 模式，无需填写公网回调地址。在 `.env.dingtalk.local` 中设置 `DINGTALK_ENABLED=true`、Client ID 和 Client Secret，再用上面的启动脚本运行后端。每名接收人需要先在钉钉中私聊机器人一次；机器人回复“连接成功”后，其员工 userId 会写入 `dingtalk_recipient`，网页后续广播会发送到该单聊。真实 Client Secret 不得提交到 Git。
 
 ## 开发账号
 
@@ -98,6 +107,9 @@ MQTT 不影响登录、数据库接口和前端基本联调。需要接入华为
 | `MQTT_ACCESS_KEY` / `MQTT_ACCESS_CODE` | MQTT 登录凭据 | 仅放在本地环境或机密管理中 |
 | `MQTT_INSTANCE_ID` | MQTT 实例 ID | 平台未要求时可留空 |
 | `MQTT_TOPIC` | 规则转发订阅主题 | 默认 `smoke/report` |
+| `DINGTALK_ENABLED` | 是否启动钉钉 Stream 和广播下发 | 默认 `false` |
+| `DINGTALK_CLIENT_ID` / `DINGTALK_CLIENT_SECRET` | 钉钉企业内部应用凭证 | 仅放在本地环境或机密管理中 |
+| `DINGTALK_ROBOT_CODE` | 主动发送消息的机器人编码 | 可留空，默认使用 Client ID |
 | `DEVICE_AUTH_ENABLED` | 开发环境设备令牌校验 | 默认 `false`；生产强制开启 |
 | `CORS_ALLOWED_ORIGINS` | 允许的前端来源 | 开发默认允许 `5173/5174` |
 | `LOGIN_RATE_LIMIT_ENABLED` | 是否启用登录失败限流 | 默认 `true`；生产不应关闭 |
@@ -139,6 +151,7 @@ python -m py_compile app.py
 - 登录一直失败：确认前端请求的是当前后端，并查询数据库中的实际账号状态；已有数据库不会自动恢复默认密码。
 - 前端启动到 `5174`：说明 `5173` 已被占用，属于 Vite 的正常行为，后端开发 CORS 已允许两个端口。
 - MQTT 连接失败：本地核心接口仍可使用；只有真实 MQTT 收发需要启动 Broker。
+- 钉钉机器人不回复：确认应用已经发布、消息接收模式为 Stream、环境变量已加载，并在启动日志中查找 `DingTalk Stream listener started`。
 - `mqtt=CONNECTED` 但设备离线：这只代表后端连上 Broker；检查硬件供电、IoTDA 规则转发、订阅主题、设备编号和数据库最新时间。
 - Pages 显示后端断开：先分别检查本机 `/api/health` 和公网隧道 `/api/health`，再确认 `VITE_API_BASE` 修改后重新部署。详见 [Cloudflare Pages 联调](CLOUDFLARE_PAGES.md)。
 - 浓度一直是 `.00`：确认浮点升级后是否收到过新数据；旧记录曾被截断，不能证明硬件原始值是否包含小数。

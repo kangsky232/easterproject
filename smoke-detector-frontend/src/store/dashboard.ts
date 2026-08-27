@@ -69,6 +69,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const alarms = ref<Alarm[]>([])
   const notifications = ref<Notification[]>([])
   const broadcasts = ref<BroadcastRaw[]>([])
+  const broadcastActionId = ref<number | null>(null)
   const capabilities = ref<SystemCapabilities>({
     mode: 'UNKNOWN',
     storage: 'UNKNOWN',
@@ -129,6 +130,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
   )
   const canBroadcast = computed(() =>
     ['COMMUNITY_ADMIN', 'SYSTEM_ADMIN', 'FIREFIGHTER'].includes(userRole.value),
+  )
+  const canDeleteBroadcast = computed(() =>
+    ['COMMUNITY_ADMIN', 'SYSTEM_ADMIN'].includes(userRole.value),
   )
   const canManageDevices = computed(() =>
     ['COMMUNITY_ADMIN', 'SYSTEM_ADMIN'].includes(userRole.value),
@@ -577,6 +581,59 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
+  async function deliverBroadcast(id: number): Promise<void> {
+    if (!canBroadcast.value) {
+      showToast('当前账号没有广播下发权限。', 'error')
+      return
+    }
+    if (broadcastPersistenceOnly.value) {
+      showToast('钉钉广播尚未配置，当前记录无法下发。', 'error')
+      return
+    }
+    const broadcast = broadcasts.value.find((item) => item.id === id)
+    const ok = await confirm(
+      `确定再次下发广播 #${id} 到钉钉吗？\n\n${broadcast?.content ?? ''}`,
+      '下发广播',
+    )
+    if (!ok) return
+    broadcastActionId.value = id
+    try {
+      const result = await api.deliverBroadcast(id)
+      await fetchBroadcasts()
+      if (result.status === 1) {
+        showToast(`📣 广播 #${id} 已成功下发到钉钉。`, 'success')
+      } else {
+        showToast(`广播 #${id} 下发失败，请检查钉钉连接和接收人绑定。`, 'error')
+      }
+    } catch (error) {
+      showToast(`广播下发失败：${(error as Error).message}`, 'error')
+    } finally {
+      broadcastActionId.value = null
+    }
+  }
+
+  async function deleteBroadcast(id: number): Promise<void> {
+    if (!canDeleteBroadcast.value) {
+      showToast('当前账号没有删除广播记录的权限。', 'error')
+      return
+    }
+    const ok = await confirm(
+      `确定删除广播记录 #${id} 吗？此操作不会撤回钉钉中已经送达的消息。`,
+      '删除广播记录',
+    )
+    if (!ok) return
+    broadcastActionId.value = id
+    try {
+      await api.deleteBroadcast(id)
+      broadcasts.value = broadcasts.value.filter((item) => item.id !== id)
+      showToast(`广播记录 #${id} 已删除。`, 'success')
+    } catch (error) {
+      showToast(`删除广播记录失败：${(error as Error).message}`, 'error')
+    } finally {
+      broadcastActionId.value = null
+    }
+  }
+
   async function sendChat(question: string): Promise<ChatResponse | null> {
     const trimmed = question.trim()
     if (!trimmed) return null
@@ -604,6 +661,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     alarms,
     notifications,
     broadcasts,
+    broadcastActionId,
     capabilities,
     overview,
     selectedId,
@@ -630,6 +688,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     userRole,
     canHandleAlerts,
     canBroadcast,
+    canDeleteBroadcast,
     canManageDevices,
     canSimulate,
     broadcastPersistenceOnly,
@@ -648,6 +707,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     saveDevice,
     deleteDevice,
     sendBroadcast,
+    deliverBroadcast,
+    deleteBroadcast,
     sendChat,
     showToast,
     hideFlash,

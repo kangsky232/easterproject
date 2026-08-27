@@ -16,6 +16,7 @@ mqtt:
   access-code: ${MQTT_ACCESS_CODE:}
   instance-id: ${MQTT_INSTANCE_ID:}
   topic: ${MQTT_TOPIC:smoke/report}
+  subscribe-timeout-ms: ${MQTT_SUBSCRIBE_TIMEOUT_MS:10000}
   reconnect-interval-ms: ${MQTT_RECONNECT_INTERVAL_MS:30000}
 
 jwt:

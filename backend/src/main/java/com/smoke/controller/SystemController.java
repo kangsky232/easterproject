@@ -3,6 +3,7 @@ package com.smoke.controller;
 import com.smoke.common.Result;
 import com.smoke.mqtt.HuaweiMqttSubscriber;
 import com.smoke.service.RagClient;
+import com.smoke.service.DingTalkMessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
@@ -25,6 +26,7 @@ public class SystemController {
     private final RagClient ragClient;
     private final Environment environment;
     private final HuaweiMqttSubscriber huaweiMqttSubscriber;
+    private final DingTalkMessageService dingTalkMessageService;
 
     @GetMapping("/health")
     public ResponseEntity<Result<?>> health() {
@@ -57,7 +59,8 @@ public class SystemController {
         capabilities.put("knowledgeBase", ragHealth.available() ? "CONNECTED" : "FALLBACK_ONLY");
         capabilities.put("llmProvider", ragHealth.provider());
         capabilities.put("llmModel", ragHealth.model());
-        capabilities.put("broadcast", "PERSISTENCE_ONLY");
+        capabilities.put("broadcast", dingTalkMessageService.isConfigured()
+                ? "DINGTALK_SINGLE_CHAT" : "PERSISTENCE_ONLY");
         return Result.ok(capabilities);
     }
 }

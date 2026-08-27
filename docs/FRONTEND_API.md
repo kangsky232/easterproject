@@ -218,6 +218,8 @@ Authorization: Bearer <token>
 | GET | `/api/broadcasts?page=1&pageSize=20` | 已登录 | 广播记录 |
 | GET | `/api/broadcasts/{id}` | 已登录 | 单条广播 |
 | POST | `/api/broadcasts` | 消防人员及以上 | 创建待下发广播 |
+| POST | `/api/broadcasts/{id}/deliver` | 消防人员及以上 | 再次下发已有广播并更新结果 |
+| DELETE | `/api/broadcasts/{id}` | 社区管理员、系统管理员 | 删除记录（不撤回钉钉消息） |
 | PUT | `/api/broadcasts/{id}/status` | 社区管理员、系统管理员 | 更新下发状态 |
 
 创建请求：

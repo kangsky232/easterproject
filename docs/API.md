@@ -196,6 +196,8 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 - `GET /api/broadcasts`：分页查询广播指令。
 - `GET /api/broadcasts/{id}`：查询单条广播指令。
 - `POST /api/broadcasts`：创建待下发广播指令。
+- `POST /api/broadcasts/{id}/deliver`：将已有广播再次下发到钉钉，并更新状态和执行时间。
+- `DELETE /api/broadcasts/{id}`：删除广播记录；不会撤回已经送达钉钉的消息。
 - `PUT /api/broadcasts/{id}/status`：将指令标记为成功或失败。
 
 创建请求：

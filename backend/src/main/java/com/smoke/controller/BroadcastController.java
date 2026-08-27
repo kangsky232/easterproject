@@ -6,6 +6,7 @@ import com.smoke.dto.CreateBroadcastRequest;
 import com.smoke.service.BroadcastService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,6 +40,16 @@ public class BroadcastController {
     @PostMapping
     public Result<?> create(@Valid @RequestBody CreateBroadcastRequest request) {
         return Result.ok(broadcastService.create(request));
+    }
+
+    @PostMapping("/{id}/deliver")
+    public Result<?> deliver(@PathVariable Long id) {
+        return Result.ok(broadcastService.deliver(id));
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<?> delete(@PathVariable Long id) {
+        return Result.ok(broadcastService.delete(id));
     }
 
     @PutMapping("/{id}/status")
