@@ -28,13 +28,25 @@ const ALARM_STATUS_MAP: Record<number, AlarmStatus> = {
   2: 'resolved',
 }
 
+const ALARM_TYPE_MAP = {
+  1: 'SMOKE',
+  2: 'OFFLINE',
+  3: 'TEMPERATURE',
+  4: 'HUMIDITY',
+  5: 'CURRENT',
+  6: 'WIRE_TEMPERATURE',
+  7: 'CO',
+} as const
+
 export function toAlarm(raw: AlarmRaw): Alarm {
   return {
     id: raw.id,
     deviceCode: raw.deviceId,
-    alarmType: raw.alertType === 1 ? 'SMOKE' : 'OFFLINE',
+    alarmType: ALARM_TYPE_MAP[raw.alertType as keyof typeof ALARM_TYPE_MAP] ?? 'SMOKE',
     currentValue: raw.concentration ?? null,
     thresholdValue: raw.threshold ?? null,
+    severity: raw.severity ?? null,
+    ruleDescription: raw.ruleDescription ?? null,
     status:
       raw.falseAlarm === 1 || raw.falseAlarm === true
         ? 'false_alarm'

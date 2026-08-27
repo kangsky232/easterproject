@@ -13,6 +13,7 @@ public class NotificationLog {
 
     public static final String CHANNEL_APP = "APP";
     public static final String CHANNEL_SMS = "SMS";
+    public static final String CHANNEL_DINGTALK = "DINGTALK";
     public static final String STATUS_PENDING = "PENDING";
     public static final String STATUS_SENT = "SENT";
     public static final String STATUS_FAILED = "FAILED";

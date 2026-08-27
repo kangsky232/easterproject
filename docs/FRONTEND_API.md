@@ -133,7 +133,7 @@ Authorization: Bearer <token>
 更新阈值：
 
 ```json
-{"threshold":2000}
+{"threshold":100}
 ```
 
 列表项的关键字段：
@@ -144,7 +144,7 @@ Authorization: Bearer <token>
   "deviceId": "SMOKE-001",
   "deviceName": "1号楼烟感",
   "location": "1号楼101室",
-  "threshold": 2000,
+  "threshold": 100,
   "battery": 86,
   "latestConcentration": 20.37,
   "latestTemperature": 27.43,
@@ -158,13 +158,13 @@ Authorization: Bearer <token>
 }
 ```
 
-所有数值遥测字段使用 JSON `number`，后端最多保留两位小数；前端统一显示两位小数。扩展数据在旧历史记录中可能为 `null`，此时前端显示 `--`。`latestBeepStatus` 通常为 `ON` / `OFF`；阈值仍使用正整数。
+所有数值遥测字段使用 JSON `number`，后端最多保留两位小数；前端统一显示两位小数。扩展数据在旧历史记录中可能为 `null`，此时前端显示 `--`。`latestBeepStatus` 通常为 `ON` / `OFF`；烟雾预警阈值按当前规则固定为 `100` ppm。
 
 ## 告警
 
 | 方法 | 路径 | 角色 | 说明 |
 | --- | --- | --- | --- |
-| GET | `/api/alerts?deviceId=&type=&status=&page=1&pageSize=20` | 已登录 | `type`：`1` 烟雾、`2` 离线；`status`：`0` 待处理、`1` 已确认、`2` 已处理 |
+| GET | `/api/alerts?deviceId=&type=&status=&page=1&pageSize=20` | 已登录 | `type`：`1` 烟雾、`2` 离线、`3` 温度、`4` 湿度、`5` 电流、`6` 线温、`7` CO；`status`：`0` 待处理、`1` 已确认、`2` 已处理 |
 | POST | `/api/alerts/{id}/confirm` | 消防人员及以上 | 确认告警 |
 | POST | `/api/alerts/{id}/resolve` | 消防人员及以上 | 处理并归档 |
 | POST | `/api/alerts/{id}/false-alarm` | 消防人员及以上 | 标记误报并归档 |
@@ -172,9 +172,11 @@ Authorization: Bearer <token>
 
 前端操作成功后应刷新告警列表、仪表盘摘要和通知列表。告警操作人由后端 JWT 自动写入，前端不要传操作人字段。
 
+传感器告警额外返回 `severity`（`WARNING` / `DANGER`）和 `ruleDescription`。兼容字段 `concentration` 对非烟雾告警表示该指标的触发值，单位由 `alertType` 决定。
+
 ## 通知中心
 
-通知记录接口面向前端列表、筛选、详情和统计卡片。当前 APP 表示通知中心已生成的本地记录，因此状态为 `SENT`；SMS 尚未接入供应商，只生成 `PENDING` 占位记录。接入真实供应商后字段保持不变。
+通知记录接口面向前端列表、筛选、详情和统计卡片。APP 表示通知中心本地记录，状态为 `SENT`；SMS 尚未接入供应商，只生成 `PENDING` 占位记录；DINGTALK 表示钉钉真实投递结果。
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -184,7 +186,7 @@ Authorization: Bearer <token>
 
 筛选值：
 
-- `channel`：`APP`、`SMS`
+- `channel`：`APP`、`SMS`、`DINGTALK`
 - `status`：`PENDING`、`SENT`、`FAILED`
 
 筛选值忽略首尾空格和大小写。前端展示状态时：`PENDING` 使用“待发送”，`SENT` 使用“已送达”，`FAILED` 使用“失败”；SMS 为 `PENDING` 时不得提示用户“短信已发送”。

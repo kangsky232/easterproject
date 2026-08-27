@@ -99,6 +99,8 @@ IoTDA 规则引擎把设备属性消息转发到 MQTT 后，Spring Boot 使用�
 | `CO_Value` | `coValue` | CO 值 |
 | `BeepStatus` | `beepStatus` | 蜂鸣器状态 |
 
+每条 MQTT 数据入库后都会执行后端统一阈值规则。烟雾、温度、湿度、电流、线缆温度或 CO 进入预警/危险范围时会创建告警；配置钉钉且已有绑定用户时，系统会自动发送钉钉单聊告警。同一设备同一指标的活动告警会去重，预警升级为危险时再次通知。
+
 数值字段入库时保留两位小数，遥测同时作为设备在线心跳。属性单位以华为云产品模型中的定义为准；项目不自动猜测 `Current` 和 `CO_Value` 的单位。`GET /api/system/capabilities` 中的 `mqtt=CONNECTED` 只说明后端已连接 Broker，不代表硬件正在上报；是否在线应查看设备的 `lastHeartbeat` 和最新数据时间。
 
 旧版本曾把 `Smoke_Value` 强制转换为整数，因此历史记录中已经丢失的小数无法恢复。升级已有数据库时依次执行 `docs/migrations/20260826_decimal_concentration.sql` 和 `docs/migrations/20260826_extended_sensor_metrics.sql`。

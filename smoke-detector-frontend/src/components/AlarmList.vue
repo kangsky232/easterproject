@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ALARM_STATUS, ALARM_TYPE } from '@/constants'
+import { ALARM_SEVERITY, ALARM_STATUS, ALARM_TYPE, ALARM_UNIT } from '@/constants'
 import type { AlarmStatus, AlarmType } from '@/constants'
 import type { Alarm } from '@/api/types'
 import { useDashboardStore } from '@/store/dashboard'
@@ -18,6 +18,11 @@ const visibleCount = ref(20)
 const TYPE_FILTERS: { key: TypeFilter; label: string }[] = [
   { key: 'ALL', label: '全部' },
   { key: 'SMOKE', label: '烟雾' },
+  { key: 'TEMPERATURE', label: '温度' },
+  { key: 'HUMIDITY', label: '湿度' },
+  { key: 'CURRENT', label: '电流' },
+  { key: 'WIRE_TEMPERATURE', label: '线温' },
+  { key: 'CO', label: '一氧化碳' },
   { key: 'OFFLINE', label: '离线' },
 ]
 
@@ -57,9 +62,10 @@ function badgeStyle(color: string): Record<string, string> {
 }
 
 function meta(alarm: Alarm): string {
-  return alarm.alarmType === 'SMOKE'
-    ? `浓度 ${conc(alarm.currentValue)} ppm / 阈值 ${conc(alarm.thresholdValue)} ppm`
-    : '设备心跳超时，当前处于离线状态'
+  if (alarm.alarmType === 'OFFLINE') return '设备心跳超时，当前处于离线状态'
+  const unit = ALARM_UNIT[alarm.alarmType]
+  const value = `${conc(alarm.currentValue)}${unit}`
+  return alarm.ruleDescription ? `${value} · ${alarm.ruleDescription}` : value
 }
 </script>
 
@@ -101,6 +107,13 @@ function meta(alarm: Alarm): string {
           <span class="badge" :style="badgeStyle(ALARM_STATUS[alarm.status]?.color ?? '#898781')">
             {{ ALARM_STATUS[alarm.status]?.label ?? alarm.status }}
           </span>
+          <span
+            v-if="alarm.severity"
+            class="badge"
+            :style="badgeStyle(ALARM_SEVERITY[alarm.severity]?.color ?? '#898781')"
+          >
+            {{ ALARM_SEVERITY[alarm.severity]?.label ?? alarm.severity }}
+          </span>
         </div>
         <div class="alarm-device">{{ alarm.deviceCode }}</div>
         <div class="alarm-meta">{{ meta(alarm) }}</div>
@@ -119,7 +132,7 @@ function meta(alarm: Alarm): string {
           </button>
         </div>
         <button
-          v-if="alarm.alarmType === 'SMOKE' && isActive(alarm) && store.canHandleAlerts"
+          v-if="alarm.alarmType !== 'OFFLINE' && isActive(alarm) && store.canHandleAlerts"
           class="alarm-act alarm-act-verify"
           @click="store.verifyAlarm(alarm.id)"
         >

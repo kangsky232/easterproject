@@ -101,7 +101,7 @@ Authorization: Bearer <token>
 - `GET /api/devices/{id}/current`：查询最新传感器数据。
 - `GET /api/devices/{id}/history`：查询原始历史传感器数据。
 - `GET /api/devices/{id}/trend`：按时间桶聚合历史浓度，返回平均值、最小值、最大值和样本数。
-- `PUT /api/devices/{id}/threshold`：设置烟雾阈值。
+- `PUT /api/devices/{id}/threshold`：兼容烟雾阈值接口；当前安全规则固定只接受 `100` ppm。
 
 设备列表参数均为可选：`keyword` 同时匹配设备编号、名称和位置；`status` 为 `0` 或 `1`；`page` 默认 `1`；`pageSize` 默认 `20`、最大 `200`。
 
@@ -124,7 +124,7 @@ GET /api/devices/1/history?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&lim
 阈值请求：
 
 ```json
-{"threshold": 2000}
+{"threshold": 100}
 ```
 
 修改设备资料：
@@ -143,7 +143,7 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 
 ## 数据接入
 
-- `POST /api/telemetry`：上报烟雾浓度和可选扩展传感器数据，同时刷新设备在线状态并判断烟雾阈值。
+- `POST /api/telemetry`：上报烟雾浓度和可选扩展传感器数据，同时刷新设备在线状态并执行多指标告警判断。
 - `POST /api/heartbeat`：上报心跳；设备恢复在线时自动处理已有离线告警。
 
 浓度上报：
@@ -177,7 +177,7 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 
 ### MQTT 入站
 
-设置 `MQTT_ENABLED=true` 后，后端会连接配置的 Broker 并订阅 `MQTT_TOPIC`。当前适配器用于接收华为云 IoTDA 规则转发消息，解析 `Smoke_Value`、`Temperature`、`Humidity`、`Current`、`WireTemperature`、`CO_Value` 和 `BeepStatus`，再复用同一遥测服务完成入库、在线状态和烟雾阈值判断。详细 payload、凭据和 Instance ID 说明见 [硬件接入文档](../hardware/README.md)。
+设置 `MQTT_ENABLED=true` 后，后端会连接配置的 Broker 并订阅 `MQTT_TOPIC`。当前适配器用于接收华为云 IoTDA 规则转发消息，解析 `Smoke_Value`、`Temperature`、`Humidity`、`Current`、`WireTemperature`、`CO_Value` 和 `BeepStatus`，再复用同一遥测服务完成入库、在线状态和多指标告警判断。详细 payload、凭据和 Instance ID 说明见 [硬件接入文档](../hardware/README.md)。
 
 `GET /api/system/capabilities` 中的 `mqtt=CONNECTED` 只说明后端订阅连接正常，不代表设备仍在上报。设备在线状态以最后心跳/遥测时间为准。
 
@@ -187,7 +187,20 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 - `POST /api/alerts/{id}/confirm`：确认告警。
 - `POST /api/alerts/{id}/resolve`：完成并归档告警。
 
-告警类型：`1` 为烟雾超标，`2` 为设备离线。告警状态：`0` 为未处理，`1` 为已确认，`2` 为已处理。
+告警类型：`1` 烟雾、`2` 设备离线、`3` 环境温度、`4` 环境湿度、`5` 电气电流、`6` 线缆温度、`7` 一氧化碳。`severity` 为 `WARNING`（预警）或 `DANGER`（危险），`ruleDescription` 记录实际触发规则。告警状态：`0` 为未处理，`1` 为已确认，`2` 为已处理。
+
+传感器告警规则：
+
+| 指标 | 预警 | 危险 |
+| --- | --- | --- |
+| 烟雾浓度 | `>= 100 ppm` | `> 300 ppm` |
+| 环境温度 | `> 45℃`，或 5 分钟内升温 `>= 10℃` | `> 60℃` |
+| 环境湿度 | 5 分钟内下降 `>= 20` 个百分点 | `< 20%` |
+| 电气电流 | `> 10A`，或 5 分钟内波动 `>= 5A` | `> 15A` |
+| 线缆温度 | `> 70℃` | `> 90℃` |
+| 一氧化碳 | `50–100 ppm` | `> 100 ppm` |
+
+同一设备、同一指标的活动预警只通知一次；从预警升级为危险时再次通知。告警被处置或标记误报后，如果后续数据再次进入告警范围，会创建新告警。
 
 确认和处理接口不接收操作人字段，服务端使用 JWT 对应的当前登录用户名记录操作人。
 
@@ -230,9 +243,9 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 
 - `GET /api/notifications?page=1&pageSize=50&alertId=&deviceId=&channel=&status=`：分页查询通知记录，支持按告警、设备、通道和投递状态筛选。
 - `GET /api/notifications/{id}`：查询单条通知记录。
-- `GET /api/notifications/summary`：查询 APP/SMS 与投递状态汇总。
+- `GET /api/notifications/summary`：查询 APP/SMS/钉钉与投递状态汇总。
 
-通道仅支持 `APP`、`SMS`；投递状态为 `PENDING`、`SENT`、`FAILED`，筛选值忽略首尾空格和大小写。系统在创建烟雾或离线告警时会生成两条本地记录：通知中心可见的 APP 记录标记为 `SENT`；尚未接入供应商的 SMS 记录标记为 `PENDING`、`sentAt=null`，不会声称短信已发送。真实适配器后续可把 SMS 更新为 `SENT` 或 `FAILED`，前端字段不变。详见 [前端接口协作说明](FRONTEND_API.md)。
+通道支持 `APP`、`SMS`、`DINGTALK`；投递状态为 `PENDING`、`SENT`、`FAILED`，筛选值忽略首尾空格和大小写。系统创建告警时，APP 记录标记为 `SENT`；未接入供应商的 SMS 记录标记为 `PENDING`、`sentAt=null`；配置钉钉后会真实投递并按接口结果把 DINGTALK 记录标记为 `SENT` 或 `FAILED`。详见 [前端接口协作说明](FRONTEND_API.md)。
 
 ## 智能问答
 

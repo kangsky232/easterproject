@@ -10,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Service
@@ -46,20 +45,26 @@ public class AlertReviewService {
             if (alert.getAlertType() == AlertRecord.TYPE_OFFLINE) {
                 return "历史复核：该设备离线告警已恢复并归档，不代表设备当前仍处于离线状态。";
             }
-            BigDecimal historicalConcentration = alert.getConcentration() == null
-                    ? BigDecimal.ZERO : alert.getConcentration();
-            int historicalThreshold = alert.getThreshold() == null ? 0 : alert.getThreshold();
-            return "历史复核：该烟雾告警已处置并归档，不代表当前仍存在火情。触发时浓度为 "
-                    + historicalConcentration + "，阈值为 " + historicalThreshold + "。";
+            return "历史复核：该" + AlertRecord.typeLabel(alert.getAlertType())
+                    + "告警已处置并归档。触发值为 " + measuredValue(alert)
+                    + "，触发规则为“" + alert.getRuleDescription() + "”。";
         }
         if (alert.getAlertType() == AlertRecord.TYPE_OFFLINE) {
             return "复核结论：设备已离线。请检查供电、网络与心跳上报，恢复后系统会自动关闭离线告警。";
         }
-        BigDecimal concentration = alert.getConcentration() == null ? BigDecimal.ZERO : alert.getConcentration();
-        int threshold = alert.getThreshold() == null ? 0 : alert.getThreshold();
-        if (threshold > 0 && concentration.compareTo(BigDecimal.valueOf((long) threshold * 2)) >= 0) {
-            return "复核结论：高风险。浓度已超过阈值两倍，请立即疏散并确认现场火情。";
+        if (AlertRecord.SEVERITY_DANGER.equals(alert.getSeverity())) {
+            return "复核结论：危险。" + AlertRecord.typeLabel(alert.getAlertType())
+                    + "为 " + measuredValue(alert) + "，已进入危险范围。请立即核查现场并按预案处置。";
         }
-        return "复核结论：烟雾浓度已超过阈值。请派人现场核验，并在排除火情后标记为误报。";
+        return "复核结论：预警。" + AlertRecord.typeLabel(alert.getAlertType())
+                + "为 " + measuredValue(alert) + "，触发规则为“" + alert.getRuleDescription()
+                + "”。请派人现场核验，并在排除风险后标记为误报。";
+    }
+
+    private String measuredValue(AlertRecord alert) {
+        String value = alert.getConcentration() == null
+                ? "未知"
+                : alert.getConcentration().stripTrailingZeros().toPlainString();
+        return value + AlertRecord.unit(alert.getAlertType());
     }
 }

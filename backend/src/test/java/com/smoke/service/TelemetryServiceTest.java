@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -37,13 +38,14 @@ class TelemetryServiceTest {
         Device device = new Device();
         device.setId(1L);
         device.setDeviceId("SMOKE-001");
-        device.setSmokeThreshold(2000);
+        device.setSmokeThreshold(100);
         when(deviceMapper.selectOne(any())).thenReturn(device);
         AlertRecord alert = new AlertRecord();
         alert.setId(10L);
         BigDecimal concentration = new BigDecimal("2500.25");
-        when(alertService.createSmokeAlertIfAbsent(device, concentration, 2000)).thenReturn(alert);
-        TelemetryService service = new TelemetryService(deviceMapper, smokeDataMapper, alertService);
+        when(alertService.createSensorAlerts(any(), any())).thenReturn(List.of(alert));
+        TelemetryService service = new TelemetryService(
+                deviceMapper, smokeDataMapper, alertService, new TelemetryAlertEvaluator());
 
         TelemetryResponse response = service.record(new TelemetryRequest(
                 "SMOKE-001",

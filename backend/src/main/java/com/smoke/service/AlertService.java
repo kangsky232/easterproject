@@ -16,11 +16,20 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class AlertService {
 
     private static final String SYSTEM_RECOVERY = "SYSTEM_RECOVERY";
+    private static final Set<Integer> ALERT_TYPES = Set.of(
+            AlertRecord.TYPE_SMOKE,
+            AlertRecord.TYPE_OFFLINE,
+            AlertRecord.TYPE_TEMPERATURE,
+            AlertRecord.TYPE_HUMIDITY,
+            AlertRecord.TYPE_CURRENT,
+            AlertRecord.TYPE_WIRE_TEMPERATURE,
+            AlertRecord.TYPE_CO);
 
     private final AlertRecordMapper alertRecordMapper;
     private final NotificationService notificationService;
@@ -38,8 +47,8 @@ public class AlertService {
     public PageResponse<AlertRecord> list(
             String deviceId, Integer type, Integer status, int page, int pageSize) {
         validatePage(page, pageSize);
-        if (type != null && type != AlertRecord.TYPE_SMOKE && type != AlertRecord.TYPE_OFFLINE) {
-            throw new BusinessException(400, "type 只能是 1 或 2");
+        if (type != null && !ALERT_TYPES.contains(type)) {
+            throw new BusinessException(400, "type 只能是 1 到 7");
         }
         if (status != null
                 && status != AlertRecord.STATUS_PENDING
@@ -101,12 +110,26 @@ public class AlertService {
 
     @Transactional
     public AlertRecord createSmokeAlertIfAbsent(Device device, BigDecimal concentration, int threshold) {
-        return createIfAbsent(device.getDeviceId(), AlertRecord.TYPE_SMOKE, concentration, threshold);
+        String severity = concentration.compareTo(BigDecimal.valueOf(TelemetryAlertEvaluator.SMOKE_DANGER_PPM)) > 0
+                ? AlertRecord.SEVERITY_DANGER : AlertRecord.SEVERITY_WARNING;
+        return createIfAbsent(device.getDeviceId(), AlertRecord.TYPE_SMOKE, concentration, threshold,
+                severity, "烟雾浓度达到告警阈值");
+    }
+
+    @Transactional
+    public List<AlertRecord> createSensorAlerts(
+            Device device, List<TelemetryAlertEvaluator.AlertSignal> signals) {
+        return signals.stream()
+                .map(signal -> createIfAbsent(
+                        device.getDeviceId(), signal.alertType(), signal.measuredValue(), signal.threshold(),
+                        signal.severity(), signal.ruleDescription()))
+                .toList();
     }
 
     @Transactional
     public AlertRecord createOfflineAlertIfAbsent(Device device) {
-        return createIfAbsent(device.getDeviceId(), AlertRecord.TYPE_OFFLINE, null, null);
+        return createIfAbsent(device.getDeviceId(), AlertRecord.TYPE_OFFLINE, null, null,
+                AlertRecord.SEVERITY_WARNING, "设备心跳超时");
     }
 
     @Transactional
@@ -133,12 +156,20 @@ public class AlertService {
         }
     }
 
-    private AlertRecord create(String deviceId, int type, BigDecimal concentration, Integer threshold) {
+    private AlertRecord create(
+            String deviceId,
+            int type,
+            BigDecimal concentration,
+            Integer threshold,
+            String severity,
+            String ruleDescription) {
         AlertRecord alert = new AlertRecord();
         alert.setDeviceId(deviceId);
         alert.setAlertType(type);
         alert.setConcentration(concentration);
         alert.setThreshold(threshold);
+        alert.setSeverity(severity);
+        alert.setRuleDescription(ruleDescription);
         alert.setStatus(AlertRecord.STATUS_PENDING);
         alert.setFalseAlarm(0);
         alert.setCreatedAt(LocalDateTime.now());
@@ -149,20 +180,57 @@ public class AlertService {
         return alert;
     }
 
-    private AlertRecord createIfAbsent(String deviceId, int type, BigDecimal concentration, Integer threshold) {
+    private AlertRecord createIfAbsent(
+            String deviceId,
+            int type,
+            BigDecimal concentration,
+            Integer threshold,
+            String severity,
+            String ruleDescription) {
         AlertRecord active = findActive(deviceId, type);
         if (active != null) {
-            return active;
+            return updateOnEscalation(active, concentration, threshold, severity, ruleDescription);
         }
         try {
-            return create(deviceId, type, concentration, threshold);
+            return create(deviceId, type, concentration, threshold, severity, ruleDescription);
         } catch (DuplicateKeyException exception) {
             AlertRecord concurrentAlert = findActive(deviceId, type);
             if (concurrentAlert != null) {
-                return concurrentAlert;
+                return updateOnEscalation(
+                        concurrentAlert, concentration, threshold, severity, ruleDescription);
             }
             throw exception;
         }
+    }
+
+    private AlertRecord updateOnEscalation(
+            AlertRecord active,
+            BigDecimal concentration,
+            Integer threshold,
+            String severity,
+            String ruleDescription) {
+        if (severityRank(severity) <= severityRank(active.getSeverity())) {
+            return active;
+        }
+        active.setConcentration(concentration);
+        active.setThreshold(threshold);
+        active.setSeverity(severity);
+        active.setRuleDescription(ruleDescription);
+        alertRecordMapper.updateById(active);
+        if (notificationService != null) {
+            notificationService.createForAlert(active);
+        }
+        return active;
+    }
+
+    private int severityRank(String severity) {
+        if (AlertRecord.SEVERITY_DANGER.equals(severity)) {
+            return 2;
+        }
+        if (AlertRecord.SEVERITY_WARNING.equals(severity)) {
+            return 1;
+        }
+        return 0;
     }
 
     private AlertRecord findActive(String deviceId, int type) {

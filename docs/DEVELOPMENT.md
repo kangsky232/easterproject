@@ -11,7 +11,7 @@
 | Vue/Vite 前端 | `5173` | 是 | 端口占用时 Vite 会自动选择下一个端口 |
 | RAG 服务 | `5001` | 否 | 不可用时后端使用内置安全规则降级 |
 | MQTT Broker/华为云 IoTDA | 由平台决定 | 否 | 后端已支持 MQTT 入站遥测；HTTP 联调不依赖它 |
-| 钉钉 Stream | 钉钉云端 | 否 | 启用后接收机器人私聊，并将网页广播下发到已绑定员工的钉钉单聊 |
+| 钉钉 Stream | 钉钉云端 | 否 | 启用后接收机器人私聊，并将网页广播和自动告警下发到已绑定员工的钉钉单聊 |
 
 需要安装 JDK 17+、Maven 3.9+、Node.js 18+、npm 和 MySQL 8。
 
@@ -80,7 +80,7 @@ MQTT 不影响登录、数据库接口和前端基本联调。需要接入华为
 
 订阅器接收 `Smoke_Value`、`Temperature`、`Humidity`、`Current`、`WireTemperature`、`CO_Value` 和 `BeepStatus`，数值按两位小数入库。详细 payload 和配置见 [硬件与 MQTT 说明](../hardware/README.md)。MQTT 设备下行尚未实现；网页广播可通过钉钉机器人发送给手机端员工。
 
-钉钉接入使用 Stream 模式，无需填写公网回调地址。在 `.env.dingtalk.local` 中设置 `DINGTALK_ENABLED=true`、Client ID 和 Client Secret，再用上面的启动脚本运行后端。每名接收人需要先在钉钉中私聊机器人一次；机器人回复“连接成功”后，其员工 userId 会写入 `dingtalk_recipient`，网页后续广播会发送到该单聊。真实 Client Secret 不得提交到 Git。
+钉钉接入使用 Stream 模式，无需填写公网回调地址。在 `.env.dingtalk.local` 中设置 `DINGTALK_ENABLED=true`、Client ID 和 Client Secret，再用上面的启动脚本运行后端。每名接收人需要先在钉钉中私聊机器人一次；机器人回复“连接成功”后，其员工 userId 会写入 `dingtalk_recipient`，网页广播和新产生的传感器告警会发送到该单聊。真实 Client Secret 不得提交到 Git。
 
 ## 开发账号
 

@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { ALARM_TYPE, TOKEN_KEY, USER_KEY, type MetricKey } from '@/constants'
+import { ALARM_TYPE, ALARM_UNIT, TOKEN_KEY, USER_KEY, type MetricKey } from '@/constants'
 import { theme } from '@/theme'
 import type {
   Alarm,
@@ -120,7 +120,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const selectedDevice = computed(
     () => devices.value.find((device) => device.id === selectedId.value) ?? null,
   )
-  const selectedThreshold = computed(() => selectedDevice.value?.threshold ?? 2000)
+  const selectedThreshold = computed(() => selectedDevice.value?.threshold ?? 100)
   // 未处置告警：仅「待处理」状态。
   const pendingCount = computed(() => alarms.value.filter((alarm) => alarm.status === 'pending').length)
   const activeAlertCount = computed(() => alarms.value.filter(isActiveAlarm).length)
@@ -320,14 +320,14 @@ export const useDashboardStore = defineStore('dashboard', () => {
   }
 
   function syncDeviceStatuses(): void {
-    const activeSmoke = new Set(
-      alarms.value.filter(isActiveAlarm).filter((alarm) => alarm.alarmType === 'SMOKE').map((alarm) => alarm.deviceCode),
+    const activeSensorAlerts = new Set(
+      alarms.value.filter(isActiveAlarm).filter((alarm) => alarm.alarmType !== 'OFFLINE').map((alarm) => alarm.deviceCode),
     )
     const activeOffline = new Set(
       alarms.value.filter(isActiveAlarm).filter((alarm) => alarm.alarmType === 'OFFLINE').map((alarm) => alarm.deviceCode),
     )
     devices.value.forEach((device) => {
-      device.status = activeSmoke.has(device.deviceCode)
+      device.status = activeSensorAlerts.has(device.deviceCode)
         ? 'alarm'
         : activeOffline.has(device.deviceCode)
           ? 'offline'
@@ -345,7 +345,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
       )
       if (newAlert) {
         const type = ALARM_TYPE[newAlert.alarmType]?.label ?? '未知'
-        const detail = newAlert.alarmType === 'SMOKE' ? `浓度 ${conc(newAlert.currentValue)} ppm` : '设备离线'
+        const detail = newAlert.alarmType === 'OFFLINE'
+          ? '设备离线'
+          : `${conc(newAlert.currentValue)} ${ALARM_UNIT[newAlert.alarmType]}`
         const text = `设备 ${newAlert.deviceCode} 触发${type}告警 · ${detail}`
         showToast(`⚠️ 新告警：${text}`, 'error')
         triggerFlash(text)
@@ -435,7 +437,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       showToast('所有设备均有未处置告警，请先完成处置后再模拟。', 'error')
       return
     }
-    const concentration = Math.round(Number(device.threshold || 2000) + 30)
+    const concentration = Math.round(Number(device.threshold || 100) + 30)
     try {
       await api.reportTelemetry({
         deviceId: device.deviceCode,
@@ -495,8 +497,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
       showToast('请完整填写设备编码、名称和安装位置。', 'error')
       return false
     }
-    if (!Number.isInteger(payload.threshold) || payload.threshold < 1) {
-      showToast('阈值必须是大于 0 的整数 ppm。', 'error')
+    if (payload.threshold !== 100) {
+      showToast('烟雾预警阈值已按当前安全规则固定为 100 ppm。', 'error')
       return false
     }
     try {

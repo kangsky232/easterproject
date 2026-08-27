@@ -54,6 +54,24 @@ public class DingTalkMessageService {
             throw new DingTalkDeliveryException("钉钉广播尚未配置");
         }
 
+        return sendToRecipients(
+                "【智慧烟感广播】\n设备：" + deviceId + "\n" + content,
+                "broadcast",
+                deviceId);
+    }
+
+    public int sendAlert(String deviceId, String content) {
+        if (!properties.isConfigured()) {
+            throw new DingTalkDeliveryException("钉钉告警尚未配置");
+        }
+
+        return sendToRecipients(
+                "【智慧烟感自动告警】\n" + content,
+                "alert",
+                deviceId);
+    }
+
+    private int sendToRecipients(String text, String messageType, String deviceId) {
         List<String> userIds = recipientMapper.selectList(Wrappers.<DingTalkRecipient>lambdaQuery()
                         .eq(DingTalkRecipient::getEnabled, 1)
                         .orderByAsc(DingTalkRecipient::getId))
@@ -66,12 +84,12 @@ public class DingTalkMessageService {
             throw new DingTalkDeliveryException("还没有已绑定的钉钉用户，请先在钉钉中私聊机器人");
         }
 
-        String text = "【智慧烟感广播】\n设备：" + deviceId + "\n" + content;
         for (int offset = 0; offset < userIds.size(); offset += RECIPIENT_BATCH_SIZE) {
             int end = Math.min(offset + RECIPIENT_BATCH_SIZE, userIds.size());
             sendBatch(userIds.subList(offset, end), text);
         }
-        log.info("DingTalk broadcast delivered to {} recipient(s) for device {}", userIds.size(), deviceId);
+        log.info("DingTalk {} delivered to {} recipient(s) for device {}",
+                messageType, userIds.size(), deviceId);
         return userIds.size();
     }
 

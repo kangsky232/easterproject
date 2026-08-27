@@ -1,7 +1,15 @@
 import { theme } from '@/theme'
 
 export type DeviceStatus = 'online' | 'offline' | 'alarm'
-export type AlarmType = 'SMOKE' | 'OFFLINE'
+export type AlarmType =
+  | 'SMOKE'
+  | 'OFFLINE'
+  | 'TEMPERATURE'
+  | 'HUMIDITY'
+  | 'CURRENT'
+  | 'WIRE_TEMPERATURE'
+  | 'CO'
+export type AlarmSeverity = 'WARNING' | 'DANGER'
 export type AlarmStatus = 'pending' | 'confirmed' | 'resolved' | 'false_alarm'
 
 export interface StatusMeta {
@@ -18,6 +26,26 @@ export const DEVICE_STATUS: Record<DeviceStatus, StatusMeta> = {
 export const ALARM_TYPE: Record<AlarmType, StatusMeta> = {
   SMOKE: { label: '烟雾', color: theme.critical },
   OFFLINE: { label: '离线', color: theme.warning },
+  TEMPERATURE: { label: '环境温度', color: theme.serious },
+  HUMIDITY: { label: '环境湿度', color: theme.accent },
+  CURRENT: { label: '电气电流', color: theme.warning },
+  WIRE_TEMPERATURE: { label: '线缆温度', color: theme.serious },
+  CO: { label: '一氧化碳', color: theme.critical },
+}
+
+export const ALARM_UNIT: Record<AlarmType, string> = {
+  SMOKE: 'ppm',
+  OFFLINE: '',
+  TEMPERATURE: '℃',
+  HUMIDITY: '%',
+  CURRENT: 'A',
+  WIRE_TEMPERATURE: '℃',
+  CO: 'ppm',
+}
+
+export const ALARM_SEVERITY: Record<AlarmSeverity, StatusMeta> = {
+  WARNING: { label: '预警', color: theme.warning },
+  DANGER: { label: '危险', color: theme.critical },
 }
 
 export const ALARM_STATUS: Record<AlarmStatus, StatusMeta> = {

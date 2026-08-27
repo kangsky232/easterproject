@@ -1,4 +1,4 @@
-import type { AlarmStatus, AlarmType, DeviceStatus } from '@/constants'
+import type { AlarmSeverity, AlarmStatus, AlarmType, DeviceStatus } from '@/constants'
 
 // ---------- 后端原始响应（camelCase） ----------
 
@@ -34,6 +34,8 @@ export interface AlarmRaw {
   alertType: number
   concentration?: number | null
   threshold?: number | null
+  severity?: AlarmSeverity | null
+  ruleDescription?: string | null
   status: number
   falseAlarm?: number | boolean
   createdAt?: string | null
@@ -165,6 +167,8 @@ export interface Alarm {
   alarmType: AlarmType
   currentValue: number | null
   thresholdValue: number | null
+  severity: AlarmSeverity | null
+  ruleDescription: string | null
   status: AlarmStatus
   createdAt: string | null
   verifyResult?: string

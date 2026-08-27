@@ -120,9 +120,11 @@ public class RagClient {
     private Map<String, Object> alertContext(AlertRecord alert) {
         Map<String, Object> context = new LinkedHashMap<>();
         context.put("deviceId", alert.getDeviceId());
-        context.put("alertType", alert.getAlertType() == AlertRecord.TYPE_SMOKE ? "SMOKE" : "OFFLINE");
+        context.put("alertType", AlertRecord.typeLabel(alert.getAlertType()));
         context.put("concentration", alert.getConcentration());
         context.put("threshold", alert.getThreshold());
+        context.put("severity", alert.getSeverity());
+        context.put("ruleDescription", alert.getRuleDescription());
         context.put("status", alert.getStatus());
         return context;
     }

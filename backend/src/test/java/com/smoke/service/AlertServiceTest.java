@@ -24,6 +24,9 @@ class AlertServiceTest {
     @Mock
     private AlertRecordMapper alertRecordMapper;
 
+    @Mock
+    private NotificationService notificationService;
+
     @Test
     void createSmokeAlertStoresThresholdContext() {
         when(alertRecordMapper.selectOne(any())).thenReturn(null);
@@ -31,13 +34,14 @@ class AlertServiceTest {
         Device device = new Device();
         device.setDeviceId("SMOKE-001");
 
-        service.createSmokeAlertIfAbsent(device, new BigDecimal("2500.25"), 2000);
+        service.createSmokeAlertIfAbsent(device, new BigDecimal("150.25"), 100);
 
         ArgumentCaptor<AlertRecord> captor = ArgumentCaptor.forClass(AlertRecord.class);
         verify(alertRecordMapper).insert(captor.capture());
         assertEquals(AlertRecord.TYPE_SMOKE, captor.getValue().getAlertType());
-        assertEquals(new BigDecimal("2500.25"), captor.getValue().getConcentration());
-        assertEquals(2000, captor.getValue().getThreshold());
+        assertEquals(new BigDecimal("150.25"), captor.getValue().getConcentration());
+        assertEquals(100, captor.getValue().getThreshold());
+        assertEquals(AlertRecord.SEVERITY_WARNING, captor.getValue().getSeverity());
         assertEquals(AlertRecord.STATUS_PENDING, captor.getValue().getStatus());
     }
 
@@ -50,10 +54,34 @@ class AlertServiceTest {
         Device device = new Device();
         device.setDeviceId("SMOKE-001");
 
-        AlertRecord result = service.createSmokeAlertIfAbsent(device, new BigDecimal("2500.25"), 2000);
+        AlertRecord result = service.createSmokeAlertIfAbsent(device, new BigDecimal("150.25"), 100);
 
         assertSame(existing, result);
         verify(alertRecordMapper, never()).insert(any(AlertRecord.class));
+    }
+
+    @Test
+    void activeWarningIsUpdatedAndNotifiedWhenItEscalatesToDanger() {
+        AlertRecord existing = new AlertRecord();
+        existing.setId(10L);
+        existing.setSeverity(AlertRecord.SEVERITY_WARNING);
+        when(alertRecordMapper.selectOne(any())).thenReturn(existing);
+        AlertService service = new AlertService(alertRecordMapper, notificationService);
+        Device device = new Device();
+        device.setDeviceId("SMOKE-001");
+        var signal = new TelemetryAlertEvaluator.AlertSignal(
+                AlertRecord.TYPE_SMOKE,
+                AlertRecord.SEVERITY_DANGER,
+                new BigDecimal("350"),
+                300,
+                "烟雾浓度 > 300 ppm");
+
+        service.createSensorAlerts(device, java.util.List.of(signal));
+
+        assertEquals(AlertRecord.SEVERITY_DANGER, existing.getSeverity());
+        assertEquals(new BigDecimal("350"), existing.getConcentration());
+        verify(alertRecordMapper).updateById(existing);
+        verify(notificationService).createForAlert(existing);
     }
 
     @Test

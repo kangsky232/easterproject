@@ -85,7 +85,7 @@ public class DeviceService {
         String accessToken = DeviceCredentialCodec.generate();
         device.setDeviceTokenHash(DeviceCredentialCodec.hash(accessToken));
         if (device.getSmokeThreshold() == null) {
-            device.setSmokeThreshold(2000);
+            device.setSmokeThreshold(TelemetryAlertEvaluator.DEFAULT_SMOKE_WARNING_PPM);
         }
         device.setBindTime(LocalDateTime.now());
         if (existing == null) {
@@ -218,6 +218,9 @@ public class DeviceService {
 
     @Transactional
     public Device updateThreshold(Long id, Integer threshold) {
+        if (!Integer.valueOf(TelemetryAlertEvaluator.DEFAULT_SMOKE_WARNING_PPM).equals(threshold)) {
+            throw new BusinessException(400, "烟雾预警阈值已按当前安全规则固定为 100 ppm");
+        }
         Device device = requireDevice(id);
         device.setSmokeThreshold(threshold);
         deviceMapper.updateById(device);

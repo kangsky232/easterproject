@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS device (
     device_name VARCHAR(100) COMMENT '设备名称',
     location VARCHAR(200) COMMENT '安装位置',
     status TINYINT DEFAULT 0 COMMENT '0-离线 1-在线',
-    smoke_threshold INT DEFAULT 2000 COMMENT '烟雾阈值(ppm)',
+    smoke_threshold INT DEFAULT 100 COMMENT '烟雾预警阈值(ppm)',
     battery INT COMMENT '电量百分比',
     last_heartbeat DATETIME COMMENT '最后心跳时间',
     bind_time DATETIME COMMENT '绑定时间',
@@ -52,9 +52,11 @@ CREATE TABLE IF NOT EXISTS smoke_data (
 CREATE TABLE IF NOT EXISTS alert_record (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     device_id VARCHAR(64) NOT NULL,
-    alert_type TINYINT NOT NULL COMMENT '1-烟雾告警 2-离线告警',
-    concentration DECIMAL(12,2) COMMENT '触发时的浓度(烟雾告警时，保留两位小数)',
+    alert_type TINYINT NOT NULL COMMENT '1-烟雾 2-离线 3-温度 4-湿度 5-电流 6-线缆温度 7-一氧化碳',
+    concentration DECIMAL(12,2) COMMENT '触发时的指标值（兼容字段名）',
     threshold INT COMMENT '触发阈值',
+    severity VARCHAR(16) COMMENT 'WARNING-预警 DANGER-危险',
+    rule_description VARCHAR(255) COMMENT '触发规则说明',
     status TINYINT DEFAULT 0 COMMENT '0-未处理 1-已确认 2-已处理',
     false_alarm TINYINT NOT NULL DEFAULT 0 COMMENT '0-非误报 1-误报',
     confirmed_by VARCHAR(64) COMMENT '确认人',
@@ -67,7 +69,7 @@ CREATE TABLE IF NOT EXISTS alert_record (
     INDEX idx_alert_active (device_id, alert_type, status, created_at),
     UNIQUE INDEX uk_alert_active (device_id, alert_type, active_marker),
     CONSTRAINT fk_alert_device FOREIGN KEY (device_id) REFERENCES device(device_id),
-    CONSTRAINT chk_alert_type CHECK (alert_type IN (1, 2)),
+    CONSTRAINT chk_alert_type CHECK (alert_type IN (1, 2, 3, 4, 5, 6, 7)),
     CONSTRAINT chk_alert_status CHECK (status IN (0, 1, 2))
 );
 
@@ -83,7 +85,7 @@ CREATE TABLE IF NOT EXISTS alert_review (
     CONSTRAINT fk_alert_review_alert FOREIGN KEY (alert_id) REFERENCES alert_record(id)
 );
 
--- 告警通知记录（当前 APP/短信通道为系统模拟）
+-- 告警通知记录（APP/短信为系统记录，钉钉配置后真实投递）
 CREATE TABLE IF NOT EXISTS notification_log (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     alert_id BIGINT NOT NULL,
@@ -92,7 +94,7 @@ CREATE TABLE IF NOT EXISTS notification_log (
     receiver VARCHAR(64) NOT NULL,
     content VARCHAR(500) NOT NULL,
     status VARCHAR(16) NOT NULL,
-    sent_at DATETIME NOT NULL,
+    sent_at DATETIME NULL,
     created_at DATETIME NOT NULL,
     INDEX idx_notification_time (created_at),
     INDEX idx_notification_alert (alert_id),

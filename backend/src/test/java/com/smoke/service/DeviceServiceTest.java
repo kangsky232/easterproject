@@ -68,10 +68,21 @@ class DeviceServiceTest {
         assertEquals("SMOKE-001", captor.getValue().getDeviceId());
         assertEquals(0, captor.getValue().getStatus());
         assertEquals(1, captor.getValue().getBound());
-        assertEquals(2000, captor.getValue().getSmokeThreshold());
+        assertEquals(100, captor.getValue().getSmokeThreshold());
         assertNotNull(captor.getValue().getDeviceAccessToken());
         assertTrue(DeviceCredentialCodec.matches(
                 captor.getValue().getDeviceAccessToken(), captor.getValue().getDeviceTokenHash()));
+    }
+
+    @Test
+    void updateThresholdRejectsValuesOutsideFixedSafetyRule() {
+        DeviceService service = new DeviceService(deviceMapper, smokeDataMapper, alertService);
+
+        BusinessException exception = assertThrows(
+                BusinessException.class, () -> service.updateThreshold(1L, 300));
+
+        assertEquals(400, exception.getCode());
+        assertTrue(exception.getMessage().contains("100 ppm"));
     }
 
     @Test

@@ -16,7 +16,7 @@ const store = useDashboardStore()
 const deviceCode = ref('')
 const name = ref('')
 const location = ref('')
-const threshold = ref(2000)
+const threshold = ref(100)
 const touched = ref(false)
 
 watch(
@@ -26,7 +26,7 @@ watch(
     deviceCode.value = props.device?.deviceCode ?? ''
     name.value = props.device?.name ?? ''
     location.value = props.device?.location ?? ''
-    threshold.value = props.device?.threshold ?? 2000
+    threshold.value = 100
     touched.value = false
   },
 )
@@ -36,8 +36,6 @@ const errors = computed(() => {
   if (!props.device && !deviceCode.value.trim()) result.deviceCode = '请输入设备编码'
   if (!name.value.trim()) result.name = '请输入名称'
   if (!location.value.trim()) result.location = '请输入安装位置'
-  const t = Number(threshold.value)
-  if (!Number.isInteger(t) || t < 1) result.threshold = '阈值必须是大于 0 的整数'
   return result
 })
 
@@ -73,8 +71,8 @@ async function onSubmit(): Promise<void> {
         <p v-if="touched && errors.name" class="field-error">{{ errors.name }}</p>
         <label>位置<input v-model="location" placeholder="如 3栋-1单元-101" /></label>
         <p v-if="touched && errors.location" class="field-error">{{ errors.location }}</p>
-        <label>阈值(ppm)<input v-model.number="threshold" type="number" min="1" step="1" /></label>
-        <p v-if="touched && errors.threshold" class="field-error">{{ errors.threshold }}</p>
+        <label>烟雾预警阈值(ppm)<input v-model.number="threshold" type="number" disabled /></label>
+        <p class="field-help">按当前安全规则固定为 100 ppm；烟雾浓度大于 300 ppm 判定为危险。</p>
         <div class="modal-actions">
           <button type="button" class="btn-ghost" @click="emit('close')">取消</button>
           <button type="submit" class="btn-primary">保存</button>

@@ -66,7 +66,7 @@ function render(): void {
   const key = store.selectedMetric
   const values = store.chartSeries[key] ?? []
   const meta = activeMetric.value
-  const threshold = device.value?.threshold ?? 2000
+  const threshold = device.value?.threshold ?? 100
   const showThreshold = key === 'concentration'
 
   // 构造 [时间戳, 数值] 数据；空值保留为 null，使折线断点而非误读为 0。

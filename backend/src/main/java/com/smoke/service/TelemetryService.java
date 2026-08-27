@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Locale;
 
 @Service
@@ -25,6 +26,7 @@ public class TelemetryService {
     private final DeviceMapper deviceMapper;
     private final SmokeDataMapper smokeDataMapper;
     private final AlertService alertService;
+    private final TelemetryAlertEvaluator alertEvaluator;
 
     @Transactional
     public TelemetryResponse record(TelemetryRequest request) {
@@ -36,12 +38,14 @@ public class TelemetryService {
         }
 
         LocalDateTime now = LocalDateTime.now();
-        int threshold = device.getSmokeThreshold() == null ? 2000 : device.getSmokeThreshold();
         SmokeData duplicate = findDuplicate(request);
         if (duplicate != null) {
             return new TelemetryResponse(
-                    true, true, duplicate, exceedsThreshold(duplicate.getConcentration(), threshold), null);
+                    true, true, duplicate,
+                    !alertEvaluator.evaluate(duplicate, null, device.getSmokeThreshold()).isEmpty(), null);
         }
+
+        SmokeData previous = latestReading(device.getDeviceId());
 
         BigDecimal concentration = request.concentration().setScale(2, RoundingMode.HALF_UP);
         SmokeData smokeData = new SmokeData();
@@ -62,7 +66,7 @@ public class TelemetryService {
             if (concurrentDuplicate != null) {
                 return new TelemetryResponse(
                         true, true, concurrentDuplicate,
-                        exceedsThreshold(concurrentDuplicate.getConcentration(), threshold), null);
+                        !alertEvaluator.evaluate(concurrentDuplicate, null, device.getSmokeThreshold()).isEmpty(), null);
             }
             throw exception;
         }
@@ -72,10 +76,11 @@ public class TelemetryService {
         deviceMapper.updateById(device);
         alertService.resolveOfflineAlerts(device.getDeviceId());
 
-        boolean thresholdExceeded = exceedsThreshold(concentration, threshold);
-        var alert = thresholdExceeded
-                ? alertService.createSmokeAlertIfAbsent(device, concentration, threshold)
-                : null;
+        List<TelemetryAlertEvaluator.AlertSignal> signals =
+                alertEvaluator.evaluate(smokeData, previous, device.getSmokeThreshold());
+        List<com.smoke.entity.AlertRecord> alerts = alertService.createSensorAlerts(device, signals);
+        boolean thresholdExceeded = !signals.isEmpty();
+        var alert = alerts.isEmpty() ? null : alerts.get(0);
         return new TelemetryResponse(true, false, smokeData, thresholdExceeded, alert);
     }
 
@@ -93,8 +98,12 @@ public class TelemetryService {
         return messageId == null || messageId.isBlank() ? null : messageId.trim();
     }
 
-    private boolean exceedsThreshold(BigDecimal concentration, int threshold) {
-        return concentration.compareTo(BigDecimal.valueOf(threshold)) >= 0;
+    private SmokeData latestReading(String deviceId) {
+        return smokeDataMapper.selectOne(Wrappers.<SmokeData>lambdaQuery()
+                .eq(SmokeData::getDeviceId, deviceId)
+                .orderByDesc(SmokeData::getTimestamp)
+                .orderByDesc(SmokeData::getId)
+                .last("LIMIT 1"));
     }
 
     private BigDecimal twoDecimals(BigDecimal value) {

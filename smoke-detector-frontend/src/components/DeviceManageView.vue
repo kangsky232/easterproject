@@ -42,7 +42,7 @@ function beepLabel(status: string | null): string {
 function concColor(device: Device): string {
   const value = device.latestConcentration
   if (value == null) return theme.ink3
-  const threshold = device.threshold || 2000
+  const threshold = device.threshold || 100
   if (value >= threshold) return theme.critical
   if (value >= threshold * 0.8) return theme.warning
   return theme.ink1

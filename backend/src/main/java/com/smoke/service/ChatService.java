@@ -57,10 +57,10 @@ public class ChatService {
             return response("可在“设备管理”中编辑设备并设置阈值。阈值必须是大于 0 的整数 ppm；调整后应结合现场环境进行验证。", "LOW");
         }
         if (alert != null) {
-            String type = alert.getAlertType() == AlertRecord.TYPE_SMOKE ? "烟雾" : "离线";
+            String type = AlertRecord.typeLabel(alert.getAlertType());
             return response("当前关联的是设备 " + alert.getDeviceId() + " 的" + type
                     + "告警。请先确认告警，再完成处置；若经现场核验为非火情，可标记为误报。",
-                    alert.getAlertType() == AlertRecord.TYPE_SMOKE ? "HIGH" : "MEDIUM");
+                    AlertRecord.SEVERITY_DANGER.equals(alert.getSeverity()) ? "CRITICAL" : "HIGH");
         }
         return response("我可以协助说明告警确认与处置、人员疏散、设备离线处理和阈值设置。你也可以先在监控大屏中选择有告警的设备再提问。", "UNKNOWN");
     }
