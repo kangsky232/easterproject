@@ -72,6 +72,20 @@ function lerp(from: Point, to: Point, ratio: number): Point {
   }
 }
 
+const chineseDigits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九']
+
+function formatChineseNumber(value: number): string {
+  if (!Number.isInteger(value) || value < 0 || value > 99) return String(value)
+  if (value < 10) return chineseDigits[value]
+  const tens = Math.floor(value / 10)
+  const ones = value % 10
+  return `${tens === 1 ? '' : chineseDigits[tens]}十${ones === 0 ? '' : chineseDigits[ones]}`
+}
+
+function formatBuildingName(building: MapBuilding): string {
+  return building.buildingName.replace(/^(\d+)(?=号)/, (number) => formatChineseNumber(Number(number)))
+}
+
 const gridLines = computed(() => {
   const lines: Array<{ a: Point; b: Point }> = []
   for (let step = 0; step <= 100; step += 10) {
@@ -136,7 +150,7 @@ const deviceVisuals = computed<DeviceVisual[]>(() =>
     if (!building || device.floorNo == null) return []
     const x = Number(building.positionX) + Number(device.positionX ?? 0)
     const z = Number(building.positionZ) + Number(device.positionZ ?? 0)
-    const label = device.roomLabel || `${device.floorNo}F`
+    const label = device.roomLabel || `第${formatChineseNumber(device.floorNo)}层`
     return [{
       device,
       point: project(x, z, device.floorNo * 4.6 + 1.5),
@@ -254,8 +268,8 @@ watch(selectedDevice, (device) => {
               <polygon class="map3d-building__top" :points="visual.top" />
               <g class="map3d-building__label" :transform="`translate(${visual.center.x} ${visual.center.y - 18})`">
                 <rect x="-66" y="-31" width="132" height="38" rx="8" />
-                <text class="map3d-building__name" x="0" y="-16" text-anchor="middle">{{ visual.building.buildingName }}</text>
-                <text class="map3d-building__meta" x="0" y="-3" text-anchor="middle">{{ visual.building.buildingCode }} · {{ visual.building.floors }} 层</text>
+                <text class="map3d-building__name" x="0" y="-16" text-anchor="middle">{{ formatBuildingName(visual.building) }}</text>
+                <text class="map3d-building__meta" x="0" y="-3" text-anchor="middle">共{{ formatChineseNumber(visual.building.floors) }}层</text>
               </g>
             </g>
 
@@ -275,7 +289,7 @@ watch(selectedDevice, (device) => {
               <circle class="map3d-device__pulse" :cx="visual.point.x" :cy="visual.point.y" r="15" />
               <g class="map3d-device__label" :transform="`translate(${visual.point.x + 13} ${visual.point.y - 24})`">
                 <rect x="0" y="0" :width="visual.labelWidth" height="22" rx="6" />
-                <text x="9" y="15">{{ visual.device.roomLabel || `${visual.device.floorNo}F` }}</text>
+                <text x="9" y="15">{{ visual.device.roomLabel || `第${formatChineseNumber(visual.device.floorNo ?? 0)}层` }}</text>
               </g>
             </g>
           </g>
@@ -301,7 +315,7 @@ watch(selectedDevice, (device) => {
           </div>
           <dl class="map3d-location">
             <div><dt>设备编号</dt><dd>{{ selectedDevice.deviceId }}</dd></div>
-            <div><dt>空间位置</dt><dd>{{ selectedDevice.buildingName }} {{ selectedDevice.floorNo }}F {{ selectedDevice.roomLabel }}</dd></div>
+            <div><dt>空间位置</dt><dd>{{ selectedDevice.buildingName }} 第{{ formatChineseNumber(selectedDevice.floorNo ?? 0) }}层 {{ selectedDevice.roomLabel }}</dd></div>
             <div><dt>安装说明</dt><dd>{{ selectedDevice.location || '—' }}</dd></div>
             <div><dt>最新数据</dt><dd>{{ fmtFull(selectedDevice.latestTimestamp) }}</dd></div>
           </dl>

@@ -166,12 +166,13 @@ CREATE TABLE IF NOT EXISTS map_building (
     CONSTRAINT chk_map_building_enabled CHECK (enabled IN (0, 1))
 );
 
-INSERT IGNORE INTO map_building
+INSERT INTO map_building
     (building_code, building_name, position_x, position_z, width, depth, floors)
 VALUES
     ('A1', '1号住宅楼', 16, 18, 18, 14, 6),
     ('A2', '2号住宅楼', 47, 12, 22, 16, 8),
-    ('A3', '3号住宅楼', 75, 28, 17, 13, 5);
+    ('A3', '3号住宅楼', 75, 28, 17, 13, 5)
+ON DUPLICATE KEY UPDATE building_name = VALUES(building_name);
 
 -- 设备在模拟楼栋中的楼层、房间和局部坐标
 CREATE TABLE IF NOT EXISTS device_map_position (
