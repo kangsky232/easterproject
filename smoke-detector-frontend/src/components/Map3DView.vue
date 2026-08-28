@@ -12,15 +12,20 @@ interface Point {
 interface BuildingVisual {
   building: MapBuilding
   top: string
-  sideA: string
-  sideB: string
+  sides: Array<{
+    points: string
+    tone: 'a' | 'b'
+    floorLines: Array<{ a: Point; b: Point }>
+  }>
   center: Point
   depth: number
+  status: 'ONLINE' | 'OFFLINE' | 'ALARM' | 'EMPTY'
 }
 
 interface DeviceVisual {
   device: MapDevice
   point: Point
+  labelWidth: number
 }
 
 const store = useDashboardStore()
@@ -60,6 +65,13 @@ function points(items: Point[]): string {
   return items.map((item) => `${item.x.toFixed(1)},${item.y.toFixed(1)}`).join(' ')
 }
 
+function lerp(from: Point, to: Point, ratio: number): Point {
+  return {
+    x: from.x + (to.x - from.x) * ratio,
+    y: from.y + (to.y - from.y) * ratio,
+  }
+}
+
 const gridLines = computed(() => {
   const lines: Array<{ a: Point; b: Point }> = []
   for (let step = 0; step <= 100; step += 10) {
@@ -79,13 +91,40 @@ const buildingVisuals = computed<BuildingVisual[]>(() =>
     const bottom = [project(x, z), project(x + width, z), project(x + width, z + depth), project(x, z + depth)]
     const top = [project(x, z, height), project(x + width, z, height), project(x + width, z + depth, height), project(x, z + depth, height)]
     const center = project(x + width / 2, z + depth / 2, height)
+    const visibleSides = [[0, 1], [1, 2], [2, 3], [3, 0]]
+      .map(([from, to], index) => ({
+        from,
+        to,
+        index,
+        depth: (bottom[from].y + bottom[to].y) / 2,
+      }))
+      .sort((a, b) => b.depth - a.depth)
+      .slice(0, 2)
+    const buildingDevices = (scene.value?.devices ?? []).filter((device) => device.buildingCode === building.buildingCode)
+    const status: BuildingVisual['status'] = buildingDevices.some((device) => device.status === 'ALARM')
+      ? 'ALARM'
+      : buildingDevices.some((device) => device.status === 'ONLINE')
+        ? 'ONLINE'
+        : buildingDevices.length > 0
+          ? 'OFFLINE'
+          : 'EMPTY'
     return {
       building,
       top: points(top),
-      sideA: points([bottom[0], bottom[1], top[1], top[0]]),
-      sideB: points([bottom[1], bottom[2], top[2], top[1]]),
+      sides: visibleSides.map((side, sideIndex) => ({
+        points: points([bottom[side.from], bottom[side.to], top[side.to], top[side.from]]),
+        tone: sideIndex === 0 ? 'a' as const : 'b' as const,
+        floorLines: Array.from({ length: Math.max(0, building.floors - 1) }, (_, floorIndex) => {
+          const ratio = (floorIndex + 1) / building.floors
+          return {
+            a: lerp(bottom[side.from], top[side.from], ratio),
+            b: lerp(bottom[side.to], top[side.to], ratio),
+          }
+        }),
+      })),
       center,
       depth: project(x + width / 2, z + depth / 2).y,
+      status,
     }
   }).sort((a, b) => a.depth - b.depth),
 )
@@ -97,7 +136,12 @@ const deviceVisuals = computed<DeviceVisual[]>(() =>
     if (!building || device.floorNo == null) return []
     const x = Number(building.positionX) + Number(device.positionX ?? 0)
     const z = Number(building.positionZ) + Number(device.positionZ ?? 0)
-    return [{ device, point: project(x, z, device.floorNo * 4.6 + 1.5) }]
+    const label = device.roomLabel || `${device.floorNo}F`
+    return [{
+      device,
+      point: project(x, z, device.floorNo * 4.6 + 1.5),
+      labelWidth: Math.max(42, label.length * 10 + 18),
+    }]
   }),
 )
 
@@ -192,13 +236,27 @@ watch(selectedDevice, (device) => {
               :x1="line.a.x" :y1="line.a.y" :x2="line.b.x" :y2="line.b.y"
             />
 
-            <g v-for="visual in buildingVisuals" :key="visual.building.buildingCode" class="map3d-building">
-              <polygon class="map3d-building__side-a" :points="visual.sideA" />
-              <polygon class="map3d-building__side-b" :points="visual.sideB" />
+            <g
+              v-for="visual in buildingVisuals"
+              :key="visual.building.buildingCode"
+              class="map3d-building"
+              :class="`map3d-building--${visual.status.toLowerCase()}`"
+            >
+              <g v-for="(side, sideIndex) in visual.sides" :key="`${visual.building.buildingCode}-side-${sideIndex}`">
+                <polygon :class="`map3d-building__side map3d-building__side--${side.tone}`" :points="side.points" />
+                <line
+                  v-for="(floorLine, floorIndex) in side.floorLines"
+                  :key="`${visual.building.buildingCode}-floor-${sideIndex}-${floorIndex}`"
+                  class="map3d-building__floor-line"
+                  :x1="floorLine.a.x" :y1="floorLine.a.y" :x2="floorLine.b.x" :y2="floorLine.b.y"
+                />
+              </g>
               <polygon class="map3d-building__top" :points="visual.top" />
-              <text :x="visual.center.x" :y="visual.center.y - 10" text-anchor="middle">
-                {{ visual.building.buildingName }} · {{ visual.building.floors }}F
-              </text>
+              <g class="map3d-building__label" :transform="`translate(${visual.center.x} ${visual.center.y - 18})`">
+                <rect x="-66" y="-31" width="132" height="38" rx="8" />
+                <text class="map3d-building__name" x="0" y="-16" text-anchor="middle">{{ visual.building.buildingName }}</text>
+                <text class="map3d-building__meta" x="0" y="-3" text-anchor="middle">{{ visual.building.buildingCode }} · {{ visual.building.floors }} 层</text>
+              </g>
             </g>
 
             <g
@@ -215,7 +273,10 @@ watch(selectedDevice, (device) => {
               <line :x1="visual.point.x" :y1="visual.point.y" :x2="visual.point.x" :y2="visual.point.y + 20" />
               <circle :cx="visual.point.x" :cy="visual.point.y" r="9" />
               <circle class="map3d-device__pulse" :cx="visual.point.x" :cy="visual.point.y" r="15" />
-              <text :x="visual.point.x + 13" :y="visual.point.y - 8">{{ visual.device.roomLabel }}</text>
+              <g class="map3d-device__label" :transform="`translate(${visual.point.x + 13} ${visual.point.y - 24})`">
+                <rect x="0" y="0" :width="visual.labelWidth" height="22" rx="6" />
+                <text x="9" y="15">{{ visual.device.roomLabel || `${visual.device.floorNo}F` }}</text>
+              </g>
             </g>
           </g>
         </svg>
