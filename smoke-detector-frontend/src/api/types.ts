@@ -118,6 +118,66 @@ export interface LoginResponse {
   user: User
 }
 
+export interface RoleWorkspace {
+  roleCode: string
+  roleLabel: string
+  homeTitle: string
+  description: string
+  modules: string[]
+  permissions: string[]
+}
+
+export interface MapBuilding {
+  buildingCode: string
+  buildingName: string
+  positionX: number
+  positionZ: number
+  width: number
+  depth: number
+  floors: number
+}
+
+export interface MapDevice {
+  id: number
+  deviceId: string
+  deviceName?: string
+  location?: string
+  buildingCode?: string | null
+  buildingName?: string | null
+  floorNo?: number | null
+  roomLabel?: string | null
+  positionX?: number | null
+  positionZ?: number | null
+  online: boolean
+  status: 'ONLINE' | 'OFFLINE' | 'ALARM'
+  alertSeverity?: 'WARNING' | 'DANGER' | 'OFFLINE' | null
+  battery?: number | null
+  smoke?: number | null
+  temperature?: number | null
+  humidity?: number | null
+  current?: number | null
+  wireTemperature?: number | null
+  coValue?: number | null
+  latestTimestamp?: string | null
+}
+
+export interface MapScene {
+  sceneCode: string
+  sceneName: string
+  width: number
+  depth: number
+  buildings: MapBuilding[]
+  devices: MapDevice[]
+}
+
+export interface MapPositionPayload {
+  buildingCode: string
+  floorNo: number
+  roomLabel: string
+  positionX: number
+  positionZ: number
+}
+
 export interface ReviewResponse {
   reviewResult: string
 }

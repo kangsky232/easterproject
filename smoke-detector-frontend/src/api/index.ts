@@ -8,10 +8,13 @@ import type {
   DeviceRaw,
   HistoryPointRaw,
   LoginResponse,
+  MapPositionPayload,
+  MapScene,
   NotificationRaw,
   OverviewRaw,
   PageResult,
   ReviewResponse,
+  RoleWorkspace,
   SystemCapabilities,
   TrendPointRaw,
 } from './types'
@@ -22,6 +25,21 @@ export function checkHealth(): Promise<unknown> {
 
 export function fetchCapabilities(): Promise<SystemCapabilities> {
   return api('/api/system/capabilities')
+}
+
+export function fetchWorkspace(): Promise<RoleWorkspace> {
+  return api('/api/auth/workspace')
+}
+
+export function fetchMapScene(): Promise<MapScene> {
+  return api('/api/map/scene')
+}
+
+export function updateMapPosition(id: number, payload: MapPositionPayload): Promise<unknown> {
+  return api(`/api/map/devices/${id}/position`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
 }
 
 export function fetchOverview(): Promise<OverviewRaw> {

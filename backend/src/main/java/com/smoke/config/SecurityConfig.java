@@ -55,6 +55,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/health", "/api/system/capabilities", "/api/auth/login", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/telemetry", "/api/heartbeat").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/notifications/**", "/api/broadcasts/**")
+                        .hasAnyRole("COMMUNITY_ADMIN", "SYSTEM_ADMIN", "FIREFIGHTER")
+                        .requestMatchers(HttpMethod.PUT, "/api/map/devices/*/position")
+                        .hasAnyRole("COMMUNITY_ADMIN", "SYSTEM_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/devices/bind").hasAnyRole("COMMUNITY_ADMIN", "SYSTEM_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/devices/*/credentials").hasAnyRole("COMMUNITY_ADMIN", "SYSTEM_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/devices/**").hasAnyRole("COMMUNITY_ADMIN", "SYSTEM_ADMIN")

@@ -13,6 +13,7 @@
 - [schema.sql](schema.sql)：MySQL 初始建表脚本。
 - [migrations/20260826_decimal_concentration.sql](migrations/20260826_decimal_concentration.sql)：已有数据库的浓度小数升级脚本。
 - [migrations/20260826_extended_sensor_metrics.sql](migrations/20260826_extended_sensor_metrics.sql)：已有数据库的温度、湿度、电流、线缆温度、CO 值和蜂鸣器状态升级脚本。
+- [migrations/20260828_role_workspace_3d_map.sql](migrations/20260828_role_workspace_3d_map.sql)：新增模拟楼栋、设备楼层/房间/坐标并为已有设备分配默认位置。
 - [硬件说明](../hardware/README.md)：设备上报方式和 MQTT 主题约定。
 - [视觉服务说明](../ai-vision/README.md)：当前占位接口和正式接入条件。
 

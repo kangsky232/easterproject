@@ -19,16 +19,26 @@ import FlashOverlay from '@/components/FlashOverlay.vue'
 import TokenModal from '@/components/TokenModal.vue'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import LoginModal from '@/components/LoginModal.vue'
+import Map3DView from '@/components/Map3DView.vue'
+import RoleWorkspaceBanner from '@/components/RoleWorkspaceBanner.vue'
+import UserAdminEntryView from '@/components/UserAdminEntryView.vue'
 
 const store = useDashboardStore()
 
-const tabs = computed(() => [
-  { key: 'monitor', label: '📊 监控大屏' },
-  ...(store.canManageDevices ? [{ key: 'devices', label: '🔧 设备管理' }] : []),
-  { key: 'chat', label: '💬 智能问答' },
-  { key: 'notifications', label: '🔔 通知记录' },
-  { key: 'broadcasts', label: '📣 广播记录' },
-])
+const tabs = computed(() => {
+  const role = store.userRole
+  const labels: Record<string, Record<string, string>> = {
+    RESIDENT: { monitor: '🏠 我的安全', map: '🏙️ 社区 3D', chat: '💬 安全问答' },
+    FIREFIGHTER: { monitor: '🚨 应急总览', map: '🏙️ 3D 态势', chat: '💬 智能辅助', notifications: '🔔 告警通知', broadcasts: '📣 应急广播' },
+    COMMUNITY_ADMIN: { monitor: '📊 小区监控', map: '🏙️ 3D 社区', devices: '🔧 设备管理', chat: '💬 智能问答', notifications: '🔔 通知记录', broadcasts: '📣 广播管理' },
+    SYSTEM_ADMIN: { monitor: '📊 系统总览', map: '🏙️ 3D 社区', devices: '🔧 设备管理', chat: '💬 智能问答', notifications: '🔔 通知审计', broadcasts: '📣 广播管理', users: '👥 用户管理' },
+  }
+  const fallback: Record<string, string> = { monitor: '📊 监控大屏', map: '🏙️ 模拟 3D 地图', devices: '🔧 设备管理', chat: '💬 智能问答', notifications: '🔔 通知记录', broadcasts: '📣 广播记录', users: '👥 用户管理' }
+  const order = ['monitor', 'map', 'devices', 'chat', 'notifications', 'broadcasts', 'users']
+  return order
+    .filter((key) => store.canViewModule(key))
+    .map((key) => ({ key, label: labels[role]?.[key] ?? fallback[key] }))
+})
 
 const activeTab = ref('monitor')
 const showBroadcast = ref(false)
@@ -54,12 +64,9 @@ function onSimulate(): void {
   void store.simulateAlarm()
 }
 
-watch(
-  () => store.canManageDevices,
-  (allowed) => {
-    if (!allowed && activeTab.value === 'devices') activeTab.value = 'monitor'
-  },
-)
+watch(tabs, (available) => {
+  if (!available.some((tab) => tab.key === activeTab.value)) activeTab.value = 'monitor'
+})
 
 // 轮询 + 断线退避：后端在线按固定周期刷新，离线时指数退避，恢复后复位。
 let pollTimer: number | undefined
@@ -108,6 +115,7 @@ onUnmounted(() => {
   </div>
 
   <div v-show="activeTab === 'monitor'">
+    <RoleWorkspaceBanner />
     <template v-if="store.loading">
       <div class="kpi-row">
         <div v-for="i in 5" :key="i" class="skeleton skeleton-kpi"></div>
@@ -128,6 +136,10 @@ onUnmounted(() => {
     </template>
   </div>
 
+  <div v-show="activeTab === 'map'">
+    <Map3DView />
+  </div>
+
   <div v-show="activeTab === 'devices'">
     <DeviceManageView />
   </div>
@@ -142,6 +154,10 @@ onUnmounted(() => {
 
   <div v-show="activeTab === 'broadcasts'">
     <BroadcastsView />
+  </div>
+
+  <div v-show="activeTab === 'users'">
+    <UserAdminEntryView />
   </div>
 
   <BroadcastModal :open="showBroadcast" @close="showBroadcast = false" />

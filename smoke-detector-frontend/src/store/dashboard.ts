@@ -7,7 +7,10 @@ import type {
   BroadcastRaw,
   ChatResponse,
   Device,
+  MapPositionPayload,
+  MapScene,
   Notification,
+  RoleWorkspace,
   SystemCapabilities,
   User,
 } from '@/api/types'
@@ -69,6 +72,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const alarms = ref<Alarm[]>([])
   const notifications = ref<Notification[]>([])
   const broadcasts = ref<BroadcastRaw[]>([])
+  const workspace = ref<RoleWorkspace | null>(null)
+  const mapScene = ref<MapScene | null>(null)
   const broadcastActionId = ref<number | null>(null)
   const capabilities = ref<SystemCapabilities>({
     mode: 'UNKNOWN',
@@ -125,18 +130,30 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const pendingCount = computed(() => alarms.value.filter((alarm) => alarm.status === 'pending').length)
   const activeAlertCount = computed(() => alarms.value.filter(isActiveAlarm).length)
   const userRole = computed(() => currentUser.value?.role ?? '')
-  const canHandleAlerts = computed(() =>
-    ['COMMUNITY_ADMIN', 'SYSTEM_ADMIN', 'FIREFIGHTER'].includes(userRole.value),
-  )
-  const canBroadcast = computed(() =>
-    ['COMMUNITY_ADMIN', 'SYSTEM_ADMIN', 'FIREFIGHTER'].includes(userRole.value),
-  )
-  const canDeleteBroadcast = computed(() =>
-    ['COMMUNITY_ADMIN', 'SYSTEM_ADMIN'].includes(userRole.value),
-  )
-  const canManageDevices = computed(() =>
-    ['COMMUNITY_ADMIN', 'SYSTEM_ADMIN'].includes(userRole.value),
-  )
+  const fallbackModules = computed(() => {
+    if (userRole.value === 'SYSTEM_ADMIN') return ['monitor', 'map', 'devices', 'chat', 'notifications', 'broadcasts', 'users']
+    if (userRole.value === 'COMMUNITY_ADMIN') return ['monitor', 'map', 'devices', 'chat', 'notifications', 'broadcasts']
+    if (userRole.value === 'FIREFIGHTER') return ['monitor', 'map', 'chat', 'notifications', 'broadcasts']
+    return ['monitor', 'map', 'chat']
+  })
+  const fallbackPermissions = computed(() => {
+    if (userRole.value === 'SYSTEM_ADMIN') return ['ALERT_HANDLE', 'BROADCAST_SEND', 'BROADCAST_DELETE', 'DEVICE_MANAGE', 'MAP_POSITION_MANAGE', 'USER_MANAGE']
+    if (userRole.value === 'COMMUNITY_ADMIN') return ['ALERT_HANDLE', 'BROADCAST_SEND', 'BROADCAST_DELETE', 'DEVICE_MANAGE', 'MAP_POSITION_MANAGE']
+    if (userRole.value === 'FIREFIGHTER') return ['ALERT_HANDLE', 'BROADCAST_SEND']
+    return ['READ_ONLY']
+  })
+  function canViewModule(module: string): boolean {
+    return (workspace.value?.modules ?? fallbackModules.value).includes(module)
+  }
+  function hasPermission(permission: string): boolean {
+    return (workspace.value?.permissions ?? fallbackPermissions.value).includes(permission)
+  }
+  const canHandleAlerts = computed(() => hasPermission('ALERT_HANDLE'))
+  const canBroadcast = computed(() => hasPermission('BROADCAST_SEND'))
+  const canDeleteBroadcast = computed(() => hasPermission('BROADCAST_DELETE'))
+  const canManageDevices = computed(() => hasPermission('DEVICE_MANAGE'))
+  const canManageMapPositions = computed(() => hasPermission('MAP_POSITION_MANAGE'))
+  const canManageUsers = computed(() => hasPermission('USER_MANAGE'))
   const canSimulate = computed(
     () => canManageDevices.value && capabilities.value.mode === 'LOCAL_DEVELOPMENT',
   )
@@ -195,6 +212,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     alarms.value = []
     notifications.value = []
     broadcasts.value = []
+    workspace.value = null
+    mapScene.value = null
     overview.value = { totalDevices: 0, onlineDevices: 0, offlineDevices: 0, activeAlerts: 0 }
     selectedId.value = null
     chartTimes.value = []
@@ -216,6 +235,14 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   async function fetchCapabilities(): Promise<void> {
     capabilities.value = await api.fetchCapabilities()
+  }
+
+  async function fetchWorkspace(): Promise<void> {
+    workspace.value = await api.fetchWorkspace()
+  }
+
+  async function fetchMapScene(): Promise<void> {
+    mapScene.value = await api.fetchMapScene()
   }
 
   async function fetchStats(): Promise<void> {
@@ -303,12 +330,18 @@ export const useDashboardStore = defineStore('dashboard', () => {
       loading.value = false
       return
     }
+    try {
+      await fetchWorkspace()
+    } catch (error) {
+      console.warn('角色工作台加载失败：', (error as Error).message)
+    }
     const results = await Promise.allSettled([
       fetchStats(),
       fetchDevices(),
       fetchAlarms(),
-      fetchNotifications(),
-      fetchBroadcasts(),
+      ...(canViewModule('map') ? [fetchMapScene()] : []),
+      ...(canViewModule('notifications') ? [fetchNotifications()] : []),
+      ...(canViewModule('broadcasts') ? [fetchBroadcasts()] : []),
     ])
     for (const result of results) {
       if (result.status === 'rejected') console.warn('刷新数据失败：', result.reason)
@@ -583,6 +616,22 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
+  async function saveMapPosition(id: number, payload: MapPositionPayload): Promise<boolean> {
+    if (!canManageMapPositions.value) {
+      showToast('当前账号没有地图位置管理权限。', 'error')
+      return false
+    }
+    try {
+      await api.updateMapPosition(id, payload)
+      await fetchMapScene()
+      showToast('设备 3D 地图位置已保存。', 'success')
+      return true
+    } catch (error) {
+      showToast(`地图位置保存失败：${(error as Error).message}`, 'error')
+      return false
+    }
+  }
+
   async function deliverBroadcast(id: number): Promise<void> {
     if (!canBroadcast.value) {
       showToast('当前账号没有广播下发权限。', 'error')
@@ -663,6 +712,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     alarms,
     notifications,
     broadcasts,
+    workspace,
+    mapScene,
     broadcastActionId,
     capabilities,
     overview,
@@ -692,9 +743,12 @@ export const useDashboardStore = defineStore('dashboard', () => {
     canBroadcast,
     canDeleteBroadcast,
     canManageDevices,
+    canManageMapPositions,
+    canManageUsers,
     canSimulate,
     broadcastPersistenceOnly,
     kpiItems,
+    canViewModule,
     // 方法
     requireLogin,
     login,
@@ -708,6 +762,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     verifyAlarm,
     saveDevice,
     deleteDevice,
+    saveMapPosition,
     sendBroadcast,
     deliverBroadcast,
     deleteBroadcast,

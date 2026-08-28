@@ -7,6 +7,10 @@ import { TOKEN_KEY } from '@/constants'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? ''
 
+export function backendUrl(path: string): string {
+  return `${API_BASE}${path}`
+}
+
 export class ApiRequestError extends Error {
   readonly status: number
 

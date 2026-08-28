@@ -7,6 +7,7 @@ import com.smoke.exception.BusinessException;
 import com.smoke.security.ClientAddressResolver;
 import com.smoke.security.LoginRateLimiter;
 import com.smoke.service.AuthService;
+import com.smoke.service.RoleWorkspaceService;
 import com.smoke.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -25,6 +26,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final UserService userService;
+    private final RoleWorkspaceService roleWorkspaceService;
     private final LoginRateLimiter loginRateLimiter;
     private final ClientAddressResolver clientAddressResolver;
 
@@ -47,6 +49,12 @@ public class AuthController {
     @GetMapping("/me")
     public Result<?> me(Authentication authentication) {
         return Result.ok(authService.currentUser(authentication.getName()));
+    }
+
+    @GetMapping("/workspace")
+    public Result<?> workspace(Authentication authentication) {
+        var user = authService.currentUser(authentication.getName());
+        return Result.ok(roleWorkspaceService.workspace(user.role()));
     }
 
     @PostMapping("/password")

@@ -43,6 +43,8 @@ Authorization: Bearer <token>
 
 角色包括：`RESIDENT`、`COMMUNITY_ADMIN`、`SYSTEM_ADMIN`、`FIREFIGHTER`。
 
+- `GET /api/auth/workspace`：返回当前数据库用户所属角色的专属工作台，包括 `roleCode`、`roleLabel`、`homeTitle`、`description`、可见 `modules` 和 `permissions`。前端据此生成差异化导航，但后端接口鉴权仍是最终权限边界。
+
 ## 用户管理
 
 后端提供独立管理页面：`http://127.0.0.1:8080/admin/`（也可直接访问 `/admin/index.html`）。该页面与主前端分离，使用系统管理员账号登录后可调用以下接口。
@@ -141,6 +143,25 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 
 烟雾浓度、环境温湿度、电流、线缆温度、CO 值、趋势统计值和烟雾告警触发浓度均为 JSON 数字，可包含两位小数；蜂鸣器状态为字符串；阈值当前仍为正整数。旧历史数据的新增字段可能为 `null`。
 
+## 模拟 3D 地图
+
+- `GET /api/map/scene`：所有已登录角色均可读取模拟社区场景，返回楼栋尺寸/坐标、楼层数，以及设备楼栋、楼层、房间、局部坐标、在线/告警状态和最新遥测。
+- `PUT /api/map/devices/{id}/position`：仅小区管理员和系统管理员可修改设备地图位置。
+
+位置更新请求：
+
+```json
+{
+  "buildingCode": "A1",
+  "floorNo": 3,
+  "roomLabel": "301",
+  "positionX": 5.5,
+  "positionZ": 6.0
+}
+```
+
+`floorNo` 不得超过目标楼栋层数，`positionX`/`positionZ` 必须处于楼栋宽度和深度范围内。场景数据存储在 `map_building` 与 `device_map_position`；未配置位置的已绑定设备在首次读取场景时会自动获得模拟位置。
+
 ## 数据接入
 
 - `POST /api/telemetry`：上报烟雾浓度和可选扩展传感器数据，同时刷新设备在线状态并执行多指标告警判断。
@@ -208,8 +229,8 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 
 ## 广播
 
-- `GET /api/broadcasts`：分页查询广播指令。
-- `GET /api/broadcasts/{id}`：查询单条广播指令。
+- `GET /api/broadcasts`：消防员、小区管理员、系统管理员分页查询广播指令。
+- `GET /api/broadcasts/{id}`：消防员、小区管理员、系统管理员查询单条广播指令。
 - `POST /api/broadcasts`：创建待下发广播指令。
 - `POST /api/broadcasts/{id}/deliver`：将已有广播再次下发到钉钉，并更新状态和执行时间。
 - `DELETE /api/broadcasts/{id}`：删除广播记录；不会撤回已经送达钉钉的消息。
@@ -242,6 +263,8 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 复核结论用于本地演示与人工处置辅助；尚未接入摄像头流或图像模型时，不会宣称其为真实视觉识别结果。
 
 ## 通知记录
+
+以下读取接口仅消防员、小区管理员和系统管理员可用，居民工作台不展示通知审计数据：
 
 - `GET /api/notifications?page=1&pageSize=50&alertId=&deviceId=&channel=&status=`：分页查询通知记录，支持按告警、设备、通道和投递状态筛选。
 - `GET /api/notifications/{id}`：查询单条通知记录。

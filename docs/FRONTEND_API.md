@@ -76,18 +76,19 @@ Authorization: Bearer <token>
 | 方法 | 路径 | 请求体 | 说明 |
 | --- | --- | --- | --- |
 | GET | `/api/auth/me` | 无 | 获取当前用户 |
+| GET | `/api/auth/workspace` | 无 | 获取当前角色可见模块、权限和工作台文案 |
 | POST | `/api/auth/password` | `{"currentPassword":"旧密码","newPassword":"新密码"}` | 本人改密，密码至少 8 位 |
 
 ## 角色权限
 
 | 角色 | 说明 | 前端可提供的主要操作 |
 | --- | --- | --- |
-| `RESIDENT` | 居民 | 查看受保护的监控、告警、通知、问答数据 |
-| `FIREFIGHTER` | 消防人员 | 居民权限 + 确认/处理/标记误报告警、创建广播 |
-| `COMMUNITY_ADMIN` | 社区管理员 | 消防人员权限 + 设备绑定、编辑、解绑定、轮换设备令牌、更新广播状态 |
-| `SYSTEM_ADMIN` | 系统管理员 | 社区管理员权限 + 用户管理 API |
+| `RESIDENT` | 居民 | “我的安全”只读监控、社区 3D 地图和安全问答 |
+| `FIREFIGHTER` | 消防人员 | 应急总览、3D 态势、告警处置、通知追踪和应急广播 |
+| `COMMUNITY_ADMIN` | 社区管理员 | 小区监控、设备管理、3D 位置管理、告警处置、通知和广播管理 |
+| `SYSTEM_ADMIN` | 系统管理员 | 全部社区管理员能力 + 用户管理入口与通知审计视图 |
 
-主前端已按角色隐藏设备管理、告警处置、广播创建等无权限入口，并在状态层再次拦截；后端仍会强制校验，收到 `403` 时应显示“没有操作权限”。开发态“模拟告警”仅向社区管理员和系统管理员显示，生产模式隐藏。
+登录后前端调用 `/api/auth/workspace` 生成角色专属导航，并在状态层再次拦截无权限操作；后端仍会强制校验，收到 `403` 时应显示“没有操作权限”。居民不能读取通知与广播记录；开发态“模拟告警”仅向社区管理员和系统管理员显示，生产模式隐藏。
 
 ## 系统与大屏
 
@@ -160,6 +161,15 @@ Authorization: Bearer <token>
 
 所有数值遥测字段使用 JSON `number`，后端最多保留两位小数；前端统一显示两位小数。扩展数据在旧历史记录中可能为 `null`，此时前端显示 `--`。`latestBeepStatus` 通常为 `ON` / `OFF`；烟雾预警阈值按当前规则固定为 `100` ppm。
 
+## 模拟 3D 地图
+
+| 方法 | 路径 | 角色 | 说明 |
+| --- | --- | --- | --- |
+| GET | `/api/map/scene` | 已登录 | 返回模拟社区、楼栋和带实时状态的设备空间位置 |
+| PUT | `/api/map/devices/{id}/position` | 社区管理员、系统管理员 | 保存楼栋、楼层、房间和楼内 X/Z 坐标 |
+
+地图场景的 `buildings` 用于绘制 3D 楼栋，`devices` 包含 `status`（`ONLINE` / `OFFLINE` / `ALARM`）、`alertSeverity`、楼层/房间、坐标和最新六类遥测。居民与消防员看到只读地图，小区管理员和系统管理员显示位置编辑表单。前端修改位置后必须重新拉取场景，不在本地伪造保存成功。
+
 ## 告警
 
 | 方法 | 路径 | 角色 | 说明 |
@@ -178,11 +188,11 @@ Authorization: Bearer <token>
 
 通知记录接口面向前端列表、筛选、详情和统计卡片。APP 表示通知中心本地记录，状态为 `SENT`；SMS 尚未接入供应商，只生成 `PENDING` 占位记录；DINGTALK 表示钉钉真实投递结果。
 
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| GET | `/api/notifications?page=1&pageSize=50&alertId=&deviceId=&channel=&status=` | 分页筛选通知 |
-| GET | `/api/notifications/{id}` | 通知详情 |
-| GET | `/api/notifications/summary` | 所有通知的通道与状态汇总 |
+| 方法 | 路径 | 角色 | 说明 |
+| --- | --- | --- | --- |
+| GET | `/api/notifications?page=1&pageSize=50&alertId=&deviceId=&channel=&status=` | 消防人员及以上 | 分页筛选通知 |
+| GET | `/api/notifications/{id}` | 消防人员及以上 | 通知详情 |
+| GET | `/api/notifications/summary` | 消防人员及以上 | 所有通知的通道与状态汇总 |
 
 筛选值：
 
@@ -217,8 +227,8 @@ Authorization: Bearer <token>
 
 | 方法 | 路径 | 角色 | 说明 |
 | --- | --- | --- | --- |
-| GET | `/api/broadcasts?page=1&pageSize=20` | 已登录 | 广播记录 |
-| GET | `/api/broadcasts/{id}` | 已登录 | 单条广播 |
+| GET | `/api/broadcasts?page=1&pageSize=20` | 消防人员及以上 | 广播记录 |
+| GET | `/api/broadcasts/{id}` | 消防人员及以上 | 单条广播 |
 | POST | `/api/broadcasts` | 消防人员及以上 | 创建待下发广播 |
 | POST | `/api/broadcasts/{id}/deliver` | 消防人员及以上 | 再次下发已有广播并更新结果 |
 | DELETE | `/api/broadcasts/{id}` | 社区管理员、系统管理员 | 删除记录（不撤回钉钉消息） |
@@ -291,10 +301,11 @@ Authorization: Bearer <token>
 ## 开发联调清单
 
 1. 登录后在 API 客户端自动注入 `Authorization: Bearer <token>`。
-2. 当前主前端每 10 秒刷新后端数据；主面板展示最新扩展传感器字段，实时烟雾趋势使用最近 120 条原始点，24 小时/7 天/30 天视图调用聚合趋势接口。
-3. 统一处理 `401`（重新登录）与 `403`（无权限）。
-4. 列表页保留筛选参数，所有分页接口最大 `pageSize` 为 200。
-5. 不向前端返回或记录密码、JWT、设备明文令牌；设备轮换令牌只显示一次。
+2. 调用 `/api/auth/workspace`，只渲染返回的模块；不能仅依赖本地保存的角色字符串。
+3. 当前主前端每 10 秒刷新后端数据与 3D 地图状态；主面板展示最新扩展传感器字段，实时烟雾趋势使用最近 120 条原始点，24 小时/7 天/30 天视图调用聚合趋势接口。
+4. 统一处理 `401`（重新登录）与 `403`（无权限）。
+5. 列表页保留筛选参数，所有分页接口最大 `pageSize` 为 200。
+6. 不向前端返回或记录密码、JWT、设备明文令牌；设备轮换令牌只显示一次。
 
 开发环境还可打开 `http://127.0.0.1:8080/swagger-ui.html` 查看自动生成的 OpenAPI 文档。
 
