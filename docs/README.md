@@ -1,10 +1,11 @@
 # 文档索引
 
-更新日期：2026-08-26。
+更新日期：2026-08-28。
 
 - [DEVELOPMENT.md](DEVELOPMENT.md)：本地环境、非 Docker 启动、配置、测试与常见问题。
 - [API.md](API.md)：后端接口、请求示例、权限和错误处理。
 - [FRONTEND_API.md](FRONTEND_API.md)：给前端开发者的稳定接口契约、字段模型和联调清单。
+- [BUSINESS_SCENARIO_AND_ROADMAP.md](BUSINESS_SCENARIO_AND_ROADMAP.md)：当前业务定位、参与角色、告警闭环、部署场景和分阶段迭代方案。
 - [PROJECT_STATUS.md](PROJECT_STATUS.md)：已实现、模拟实现和待接入能力的边界。
 - [SMART_QA_OPTIMIZATION.md](SMART_QA_OPTIMIZATION.md)：智能问答架构、已完成优化、测试基线和后续路线。
 - [DEPLOYMENT.md](DEPLOYMENT.md)：生产配置、容器化、上线检查和运维要求。

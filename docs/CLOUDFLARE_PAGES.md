@@ -1,10 +1,16 @@
 # Cloudflare Pages 与本机后端联调
 
-更新日期：2026-08-26。
+更新日期：2026-08-28。
 
-本文描述当前常用的演示方案：Vue 前端部署到 Cloudflare Pages，Spring Boot 与 MySQL 继续运行在开发者电脑上，再通过 Cloudflare Tunnel 暴露 HTTPS 后端。
+当前演示架构为：Vue 前端部署到 Cloudflare Pages，Spring Boot 与 MySQL 运行在开发者电脑上，Cloudflare Named Tunnel 使用固定域名把公网 HTTPS 请求转发到本机后端。
 
-这适合临时演示，不属于稳定生产架构。电脑关机、后端退出、网络中断或 Quick Tunnel 失效都会让前端显示“后端断开连接”。
+| 组件 | 当前地址 |
+| --- | --- |
+| Web 前端 | `https://easterproject.pages.dev` |
+| 公网后端 | `https://api.kangroom.eu.cc` |
+| 本机后端 | `http://127.0.0.1:8080` |
+
+Named Tunnel 重启后不会产生新地址，因此正常重启服务无需修改 Pages 环境变量。不过电脑关机、MySQL/后端退出、网络中断或 `cloudflared` 停止，仍会让前端显示“后端断开连接”。这是一套固定地址的演示架构，不是高可用生产部署。
 
 ## Pages 构建配置
 
@@ -15,67 +21,85 @@
 | 框架预设 | Vue |
 | 构建命令 | `npm run build` |
 | 构建输出目录 | `dist` |
-| 生产变量 | `VITE_API_BASE=https://<后端公网域名>` |
+| 生产变量 | `VITE_API_BASE=https://api.kangroom.eu.cc` |
 
-`VITE_API_BASE` 是 Vite 的**构建时变量**。保存变量不会改变已经发布的 JavaScript，必须再执行一次生产部署。变量值不要以 `/` 结尾。
+`VITE_API_BASE` 是 Vite 的构建时变量，值不要以 `/` 结尾。只有该地址发生变化时，才需要保存新值并重新执行生产部署；重启本机服务不会改变该值。
 
-## 启动本机后端
+## 启动顺序
 
-先确认 MySQL 和 Spring Boot 正常：
+### 1. 启动 MySQL 与后端
+
+在仓库根目录运行：
+
+```powershell
+.\scripts\start-backend.ps1
+```
+
+该脚本会加载 Git 忽略的 `.env.mqtt.local` 和 `.env.dingtalk.local`，再启动 Spring Boot。不要把真实 Client Secret 或 MQTT 凭据提交到 Git。
+
+验证本机接口：
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8080/api/health
 ```
 
-返回 `data.status=UP`、`data.database=UP` 后再启动隧道。后端 CORS 必须包含 Pages 来源：
+确认 `data.status=UP`、`data.database=UP` 后再启动隧道。后端 CORS 必须包含 Pages 精确来源：
 
 ```text
 CORS_ALLOWED_ORIGINS=https://easterproject.pages.dev
 ```
 
-多个来源使用逗号分隔，来源不带末尾 `/`。
+### 2. 启动 Named Tunnel
 
-## 启动 Quick Tunnel
+使用创建该域名映射时配置的 Named Tunnel 名称或 UUID：
+
+```powershell
+cloudflared tunnel run <TUNNEL_NAME_OR_UUID>
+```
+
+Cloudflare Tunnel 配置中的 ingress 应把 `api.kangroom.eu.cc` 指向 `http://127.0.0.1:8080`。隧道凭据属于本机机密，不应提交到仓库。
+
+验证公网接口：
+
+```powershell
+Invoke-RestMethod https://api.kangroom.eu.cc/api/health
+```
+
+返回 `data.status=UP` 后，Pages 前端即可连接后端。
+
+## 什么时候需要重新部署前端
+
+以下情况需要重新部署：
+
+- GitHub `master` 有新的前端代码提交。
+- Cloudflare Pages 的 `VITE_API_BASE`、构建命令或其他构建时变量发生变化。
+
+以下情况不需要重新部署：
+
+- 仅重启 Spring Boot、MySQL 或 `cloudflared`。
+- Named Tunnel 保持绑定 `api.kangroom.eu.cc`，只是短暂断线后重连。
+- 仅新增钉钉接收人或修改本机未提交的机密配置。
+
+## 断连排查顺序
+
+1. **本机后端**：访问 `http://127.0.0.1:8080/api/health`。失败时检查 MySQL、Java 进程和后端日志。
+2. **公网隧道**：访问 `https://api.kangroom.eu.cc/api/health`。本机正常但公网返回 `502 Bad Gateway` 时，优先检查 `cloudflared` 是否运行及 ingress 是否仍指向 `127.0.0.1:8080`。
+3. **Pages 构建变量**：确认 Production 的 `VITE_API_BASE` 为 `https://api.kangroom.eu.cc`，变量值没有末尾 `/`。
+4. **CORS**：确认后端 `CORS_ALLOWED_ORIGINS` 包含 `https://easterproject.pages.dev`。
+5. **浏览器缓存**：按 `Ctrl + F5`，在开发者工具 Network 中确认 `/api/health` 请求目标确实是 `api.kangroom.eu.cc`。
+
+`GET /api/system/capabilities` 返回 `mqtt=CONNECTED` 只说明后端连接到 MQTT Broker；硬件是否在线仍要看设备最后心跳和最新遥测时间。
+
+## Quick Tunnel 仅作应急备用
+
+Named Tunnel 暂时不可用时，可临时运行：
 
 ```powershell
 cloudflared tunnel --url http://127.0.0.1:8080 --no-autoupdate
 ```
 
-终端会输出类似 `https://<随机名称>.trycloudflare.com` 的地址。等待日志出现 `Registered tunnel connection`，再打开：
+Quick Tunnel 会生成随机 `trycloudflare.com` 地址，通常在重启后改变。若临时切换到该地址，必须修改 Pages 的 `VITE_API_BASE` 并重新部署；恢复 Named Tunnel 后也要改回固定域名。因此不建议把 Quick Tunnel 作为日常启动方式。
 
-```text
-https://<随机名称>.trycloudflare.com/api/health
-```
+## 生产化建议
 
-确认公网健康接口为 `UP` 后，把该域名写入 Pages 的 `VITE_API_BASE`，保存并重新部署生产环境。
-
-Quick Tunnel 没有可用性保证，每次重启通常会生成新域名。旧域名 DNS 失效后，前端即使部署成功也会显示后端断开。
-
-## 更新前端连接地址
-
-1. 进入 Cloudflare Pages 项目设置中的变量/机密配置。
-2. 在 Production 环境设置 `VITE_API_BASE` 为当前隧道 HTTPS 地址。
-3. 保存变量。
-4. 回到部署列表，对最新 `master` 提交执行重新部署。
-5. 等待绿色成功状态后，在浏览器按 `Ctrl + F5` 强制刷新。
-
-只看到“部署成功”还不代表连接地址正确。部署必须发生在环境变量更新之后；否则新的构建仍会嵌入旧隧道地址。
-
-## 断连排查顺序
-
-1. **本机后端**：访问 `http://127.0.0.1:8080/api/health`。失败表示 Java 或 MySQL 有问题。
-2. **公网隧道**：访问当前 `trycloudflare.com/api/health`。本机正常但公网失败，表示隧道或域名失效。
-3. **Pages 构建变量**：确认生产环境 `VITE_API_BASE` 是当前域名，并且修改变量后重新部署过。
-4. **CORS**：确认后端 `CORS_ALLOWED_ORIGINS` 包含 Pages 的精确来源。
-5. **浏览器缓存**：按 `Ctrl + F5`，并在开发者工具 Network 中查看 `/api/health` 实际请求域名。
-
-`GET /api/system/capabilities` 返回 `mqtt=CONNECTED` 只代表后端连接到 MQTT Broker；硬件是否在线要看设备最后心跳和数据库最新数据时间。
-
-## 稳定部署建议
-
-长期使用时不要依赖 Quick Tunnel。推荐二选一：
-
-- 使用 Cloudflare 账户创建 Named Tunnel，并绑定固定自定义域名；本机仍需长期在线。
-- 把后端和 MySQL 部署到长期运行的云服务器或容器平台，再使用固定 HTTPS API 域名。
-
-无论选择哪种方式，都应配置进程守护、数据库备份、强 JWT、独立数据库账号、设备凭据、日志轮转和监控告警。
+长期运行时，应把后端和 MySQL 迁移到云服务器或受管容器/数据库平台，并配置进程守护、最小权限、数据库备份、日志轮转、监控告警、WAF 和恢复演练。Named Tunnel 可以继续作为入口，但不能用它替代应用与数据库的高可用设计。详细阶段计划见 [业务场景与迭代路线](BUSINESS_SCENARIO_AND_ROADMAP.md)。

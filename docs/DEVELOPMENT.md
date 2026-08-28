@@ -153,6 +153,6 @@ python -m py_compile app.py
 - MQTT 连接失败：本地核心接口仍可使用；只有真实 MQTT 收发需要启动 Broker。
 - 钉钉机器人不回复：确认应用已经发布、消息接收模式为 Stream、环境变量已加载，并在启动日志中查找 `DingTalk Stream listener started`。
 - `mqtt=CONNECTED` 但设备离线：这只代表后端连上 Broker；检查硬件供电、IoTDA 规则转发、订阅主题、设备编号和数据库最新时间。
-- Pages 显示后端断开：先分别检查本机 `/api/health` 和公网隧道 `/api/health`，再确认 `VITE_API_BASE` 修改后重新部署。详见 [Cloudflare Pages 联调](CLOUDFLARE_PAGES.md)。
+- Pages 显示后端断开：先检查本机 `http://127.0.0.1:8080/api/health`，再检查 Named Tunnel 公网入口 `https://api.kangroom.eu.cc/api/health`。公网返回 `502` 通常表示后端、MySQL 或 `cloudflared` 未正常运行；固定域名未改变时无需重新配置 Pages。详见 [Cloudflare Pages 联调](CLOUDFLARE_PAGES.md)。
 - 浓度一直是 `.00`：确认浮点升级后是否收到过新数据；旧记录曾被截断，不能证明硬件原始值是否包含小数。
 - 修改密码后出现 `401`：旧 JWT 会立即失效，使用新密码重新登录即可。

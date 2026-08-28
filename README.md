@@ -4,6 +4,14 @@
 
 > 当前版本已实现 MQTT 入站遥测、六类传感器阈值告警、钉钉自动告警和机器人单聊广播，但不依赖外部通道也能完成登录、设备、HTTP 遥测、告警、通知记录和用户管理联调。真实短信、MQTT 设备广播和摄像头识别仍属于外部集成项，详见 [功能状态](docs/PROJECT_STATUS.md)。
 
+## 当前业务场景
+
+系统当前用于住宅、老旧小区和出租屋的火灾风险监测演示：设备上报烟雾、温湿度、电流、线缆温度和 CO 数据，后端按预警/危险规则自动建警并发送钉钉单聊，物业或社区值班人员在 Web 端完成确认、复核、解决或误报归档。MQ-2 的 ppm 为近似估算，本系统当前适合演示和小范围试点验证，不能替代经过认证的消防报警设施。
+
+完整业务边界、告警口径和分阶段迭代计划见 [业务场景与迭代路线](docs/BUSINESS_SCENARIO_AND_ROADMAP.md)。
+
+当前演示前端为 `https://easterproject.pages.dev`，公网 API 固定为 `https://api.kangroom.eu.cc`。API 通过 Cloudflare Named Tunnel 转发到本机 `127.0.0.1:8080`；重启服务无需更换域名，但本机后端、MySQL 和隧道进程必须保持运行。
+
 ## 项目结构
 
 ```text
@@ -73,6 +81,7 @@ npm run build
 - [本地开发说明](docs/DEVELOPMENT.md)
 - [后端 API](docs/API.md)
 - [前端接口协作说明](docs/FRONTEND_API.md)
+- [业务场景与迭代路线](docs/BUSINESS_SCENARIO_AND_ROADMAP.md)
 - [功能完成状态](docs/PROJECT_STATUS.md)
 - [智能问答优化记录](docs/SMART_QA_OPTIMIZATION.md)
 - [部署与上线检查](docs/DEPLOYMENT.md)

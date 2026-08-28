@@ -1,8 +1,8 @@
 # 部署说明（上线前准备）
 
-更新日期：2026-08-26。
+更新日期：2026-08-28。
 
-> 当前仓库已提供生产配置、容器编排和 HTTPS 反向代理模板。Cloudflare Pages + 本机 Quick Tunnel 可用于演示，但没有固定后端域名和可用性保证，不能视为正式上线。
+> 当前仓库已提供生产配置、容器编排和 HTTPS 反向代理模板。演示环境使用 Cloudflare Pages + 本机 Named Tunnel，后端固定域名为 `https://api.kangroom.eu.cc`。固定域名解决了重启后地址变化问题，但本机仍是单点，不能视为正式生产上线。
 
 ## 已完成的生产化约束
 
@@ -14,7 +14,7 @@
 
 ## 部署前仍需确定
 
-以下内容必须由实际部署方提供，不能在代码仓库中替代：正式域名与 DNS、服务器地址、TLS 证书、强密码/密钥、备份存储位置、告警通知供应商账号、MQTT 认证策略和运维值班联系人。
+以下内容必须由实际部署方提供，不能在代码仓库中替代：长期运行服务器地址、生产域名与 DNS 策略、TLS/WAF 策略、强密码/密钥、备份存储位置、告警通知供应商账号、MQTT 认证策略和运维值班联系人。当前 `api.kangroom.eu.cc` 是演示入口，不代表后端已经具备生产可用性。
 
 ## 上线门槛
 
@@ -30,7 +30,7 @@
 
 Pages 配置：根目录 `smoke-detector-frontend`、构建命令 `npm run build`、输出目录 `dist`、生产分支 `master`。生产变量 `VITE_API_BASE` 必须指向当前 HTTPS 后端。
 
-`VITE_API_BASE` 在构建时写入静态 JavaScript。修改它之后必须重新部署；Quick Tunnel 每次重启通常更换域名，因此每次都要同步变量并重新构建。完整步骤与排错见 [Cloudflare Pages 与本机后端联调](CLOUDFLARE_PAGES.md)。
+当前生产变量应设置为 `VITE_API_BASE=https://api.kangroom.eu.cc`。该变量在构建时写入静态 JavaScript；只有后端域名发生变化时才需要修改变量并重新部署。正常重启 Spring Boot 或 Named Tunnel 不会改变域名，也不需要重建前端。完整步骤与排错见 [Cloudflare Pages 与本机后端联调](CLOUDFLARE_PAGES.md)。
 
 ## 单机 Docker 部署步骤
 
