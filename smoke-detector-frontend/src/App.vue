@@ -109,7 +109,7 @@ onUnmounted(() => {
   <AlertBar @show-alarms="scrollToAlarms" />
 
   <div v-if="!store.backendConnected && !store.loading" class="conn-banner" role="alert">
-    <span>后端连接中断，正在自动重试…</span>
+    <span>系统连接异常，正在自动重试…</span>
     <button class="btn-mini" type="button" @click="store.refreshAll()">立即重试</button>
   </div>
 

@@ -73,7 +73,7 @@ const roleLabel = computed(() => ROLE_LABEL[store.currentUser?.role ?? ''] ?? ''
 
       <div class="conn" :class="{ off: !store.backendConnected }">
         <span class="conn-dot" aria-hidden="true"></span>
-        <span>{{ store.backendConnected ? '后端已连接 · 轮询刷新' : '后端未连接' }}</span>
+        <span>{{ store.backendConnected ? '系统在线 · 实时更新' : '系统连接异常' }}</span>
       </div>
       <div class="clock">{{ clockText }}</div>
     </div>
