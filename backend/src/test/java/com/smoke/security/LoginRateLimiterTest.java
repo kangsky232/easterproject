@@ -5,9 +5,22 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class LoginRateLimiterTest {
+
+    @Test
+    void doesNotLockClientWhenLimiterIsDisabled() {
+        LoginRateLimiter limiter = new LoginRateLimiter();
+        ReflectionTestUtils.setField(limiter, "enabled", false);
+
+        for (int attempt = 0; attempt < 20; attempt++) {
+            limiter.recordFailure("127.0.0.1");
+        }
+
+        assertDoesNotThrow(() -> limiter.check("127.0.0.1"));
+    }
 
     @Test
     void locksClientAfterConfiguredNumberOfFailures() {

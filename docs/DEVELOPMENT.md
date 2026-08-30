@@ -114,7 +114,7 @@ MQTT 不影响登录、数据库接口和前端基本联调。需要接入华为
 | `DINGTALK_ROBOT_CODE` | 主动发送消息的机器人编码 | 可留空，默认使用 Client ID |
 | `DEVICE_AUTH_ENABLED` | 开发环境设备令牌校验 | 默认 `false`；生产强制开启 |
 | `CORS_ALLOWED_ORIGINS` | 允许的前端来源 | 开发默认允许 `5173/5174` |
-| `LOGIN_RATE_LIMIT_ENABLED` | 是否启用登录失败限流 | 默认 `true`；生产不应关闭 |
+| `LOGIN_RATE_LIMIT_ENABLED` | 是否启用登录失败限流 | 默认 `false`；设为 `true` 时才启用连续失败锁定 |
 
 ## 设备接入
 

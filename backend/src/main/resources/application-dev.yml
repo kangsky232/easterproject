@@ -47,7 +47,8 @@ app:
   security:
     trust-forwarded-headers: false
   login-rate-limit:
-    enabled: ${LOGIN_RATE_LIMIT_ENABLED:true}
+    # Disabled by default: failed passwords no longer lock the login endpoint for 15 minutes.
+    enabled: ${LOGIN_RATE_LIMIT_ENABLED:false}
     max-failures: ${LOGIN_RATE_LIMIT_MAX_FAILURES:5}
     window-seconds: ${LOGIN_RATE_LIMIT_WINDOW_SECONDS:900}
     lock-seconds: ${LOGIN_RATE_LIMIT_LOCK_SECONDS:900}

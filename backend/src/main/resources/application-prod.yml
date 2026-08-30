@@ -47,7 +47,8 @@ app:
   security:
     trust-forwarded-headers: true
   login-rate-limit:
-    enabled: ${LOGIN_RATE_LIMIT_ENABLED:true}
+    # Opt-in only. Prefer edge/gateway rate limiting for internet-facing deployments.
+    enabled: ${LOGIN_RATE_LIMIT_ENABLED:false}
     max-failures: ${LOGIN_RATE_LIMIT_MAX_FAILURES:5}
     window-seconds: ${LOGIN_RATE_LIMIT_WINDOW_SECONDS:900}
     lock-seconds: ${LOGIN_RATE_LIMIT_LOCK_SECONDS:900}

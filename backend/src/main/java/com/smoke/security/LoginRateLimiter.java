@@ -16,7 +16,7 @@ public class LoginRateLimiter {
 
     private final ConcurrentHashMap<String, Attempt> attempts = new ConcurrentHashMap<>();
 
-    @Value("${app.login-rate-limit.enabled:true}")
+    @Value("${app.login-rate-limit.enabled:false}")
     private boolean enabled;
 
     @Value("${app.login-rate-limit.max-failures:5}")
