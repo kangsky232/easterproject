@@ -8,6 +8,6 @@ public class AdminPageController {
 
     @GetMapping({"/admin", "/admin/"})
     public String adminPage() {
-        return "redirect:/admin/index.html";
+        return "forward:/admin/index.html";
     }
 }

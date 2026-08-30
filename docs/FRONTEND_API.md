@@ -273,7 +273,7 @@ Authorization: Bearer <token>
 
 ## 用户管理 API
 
-以下接口只对 `SYSTEM_ADMIN` 开放。主监控前端目前不包含用户管理页，可使用独立后端管理页 `/admin/` 或由后续管理端调用。
+以下接口只对 `SYSTEM_ADMIN` 开放。主监控前端目前不包含用户管理页，可使用独立后端管理页 `/admin/index.html` 或由后续管理端调用。
 
 | 方法 | 路径 | 请求体 |
 | --- | --- | --- |

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { backendUrl } from '@/api/http'
 
-const adminUrl = backendUrl('/admin/')
+const adminUrl = backendUrl('/admin/index.html')
 </script>
 
 <template>

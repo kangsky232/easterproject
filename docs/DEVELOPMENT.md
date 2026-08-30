@@ -56,7 +56,7 @@ mvn spring-boot:run
 Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8080/api/health
 ```
 
-开发环境 Swagger：`http://127.0.0.1:8080/swagger-ui.html`；独立用户管理页：`http://127.0.0.1:8080/admin/`。
+开发环境 Swagger：`http://127.0.0.1:8080/swagger-ui.html`；独立用户管理页：`http://127.0.0.1:8080/admin/index.html`。
 
 ## 3. 启动前端
 
