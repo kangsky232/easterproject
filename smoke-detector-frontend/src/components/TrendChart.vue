@@ -13,7 +13,6 @@ let chart: echarts.ECharts | null = null
 
 const device = computed(() => store.selectedDevice)
 const statusMeta = computed(() => DEVICE_STATUS[device.value?.status ?? 'offline'])
-const heroDisplay = useCountUp(() => device.value?.latestConcentration, 500, 2)
 
 const activeMetric = computed(
   () => CHART_METRICS.find((item) => item.key === store.selectedMetric) ?? CHART_METRICS[0],
@@ -49,6 +48,9 @@ function latestValue(key: MetricKey): number | null | undefined {
       return d.latestCoValue
   }
 }
+
+const heroValue = computed(() => latestValue(store.selectedMetric))
+const heroDisplay = useCountUp(() => heroValue.value, 500, 2)
 
 function selectMetric(key: MetricKey): void {
   store.selectMetric(key)
@@ -208,12 +210,14 @@ watch(
 
     <div class="hero">
       <div class="hero-value">
-        {{ device?.latestConcentration == null ? '--' : heroDisplay }}
+        {{ heroValue == null ? '--' : heroDisplay }}
       </div>
-      <div class="hero-unit">ppm</div>
+      <div v-if="activeMetric.unit" class="hero-unit">{{ activeMetric.unit }}</div>
       <div v-if="!device" class="hero-meta">选择设备查看</div>
       <div v-else class="hero-meta">
-        {{ device.name || device.deviceCode }} · 阈值 {{ conc(device.threshold) }} ppm ·
+        {{ device.name || device.deviceCode }} · {{ activeMetric.label }}
+        <template v-if="store.selectedMetric === 'concentration'"> · 阈值 {{ conc(device.threshold) }} ppm</template>
+        ·
         <span :style="{ color: statusMeta.color }">{{ statusMeta.label }}</span> · 每3秒刷新
       </div>
     </div>

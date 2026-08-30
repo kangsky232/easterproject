@@ -87,7 +87,6 @@ export type MetricKey =
 export interface ChartMetric {
   key: MetricKey
   label: string
-  // 单位未知的指标（设备电流、CO 值）留空，不臆测单位。
   unit: string | null
 }
 
@@ -95,7 +94,7 @@ export const CHART_METRICS: ChartMetric[] = [
   { key: 'concentration', label: '烟雾浓度', unit: 'ppm' },
   { key: 'temperature', label: '环境温度', unit: '℃' },
   { key: 'humidity', label: '环境湿度', unit: '%' },
-  { key: 'current', label: '设备电流', unit: null },
+  { key: 'current', label: '设备电流', unit: 'A' },
   { key: 'wireTemperature', label: '线缆温度', unit: '℃' },
-  { key: 'coValue', label: 'CO 值', unit: null },
+  { key: 'coValue', label: 'CO 值', unit: 'ppm' },
 ]
