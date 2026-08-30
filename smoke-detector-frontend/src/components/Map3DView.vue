@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { MapBuilding, MapDevice, MapPositionPayload } from '@/api/types'
+import electricalSmokeWarningImage from '@/assets/corridor-cameras/electrical-smoke-warning.jpg'
+import elevatorLobbyImage from '@/assets/corridor-cameras/elevator-lobby.jpg'
+import fireStairwellImage from '@/assets/corridor-cameras/fire-stairwell.jpg'
 import modernCorridorImage from '@/assets/corridor-cameras/modern-corridor.jpg'
+import nightCorridorImage from '@/assets/corridor-cameras/night-corridor.jpg'
 import oldCommunityCorridorImage from '@/assets/corridor-cameras/old-community-corridor.jpg'
+import parkingConnectorImage from '@/assets/corridor-cameras/parking-connector.jpg'
+import rentalHallwayImage from '@/assets/corridor-cameras/rental-hallway.jpg'
 import smokeWarningCorridorImage from '@/assets/corridor-cameras/smoke-warning-corridor.jpg'
 import { useClock } from '@/composables/useClock'
 import { useDashboardStore } from '@/store/dashboard'
@@ -55,6 +61,29 @@ interface CameraFeed {
   code: string
   image: string
 }
+
+interface CameraVariant {
+  label: string
+  image: string
+}
+
+const corridorCameraVariants: readonly CameraVariant[] = [
+  { label: '过道主视角', image: modernCorridorImage },
+  { label: '老旧出租屋过道', image: rentalHallwayImage },
+  { label: '夜间过道', image: nightCorridorImage },
+]
+
+const publicAreaCameraVariants: readonly CameraVariant[] = [
+  { label: '老楼公共区域', image: oldCommunityCorridorImage },
+  { label: '消防楼梯', image: fireStairwellImage },
+  { label: '电梯厅', image: elevatorLobbyImage },
+  { label: '地下车库连廊', image: parkingConnectorImage },
+]
+
+const warningCameraVariants: readonly CameraVariant[] = [
+  { label: '烟雾预警演示', image: smokeWarningCorridorImage },
+  { label: '电气烟雾预警', image: electricalSmokeWarningImage },
+]
 
 const store = useDashboardStore()
 const now = useClock()
@@ -123,12 +152,21 @@ const selectedFloorDevice = computed(
   () => floorDevices.value.find((device) => device.id === selectedDeviceId.value) ?? null,
 )
 
+function cameraLocationSeed(buildingCode: string, floorNo: number): number {
+  const locationKey = (buildingCode || 'COMMUNITY') + ':' + floorNo
+  let hash = 2166136261
+  for (let index = 0; index < locationKey.length; index += 1) {
+    hash ^= locationKey.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
 const cameraFeeds = computed<CameraFeed[]>(() => {
-  const buildingIndex = Math.max(
-    0,
-    scene.value?.buildings.findIndex((building) => building.buildingCode === inspectedBuildingCode.value) ?? 0,
-  )
-  const modernMainView = (buildingIndex + inspectedFloorNo.value) % 2 === 0
+  const seed = cameraLocationSeed(inspectedBuildingCode.value, inspectedFloorNo.value)
+  const corridorVariant = corridorCameraVariants[seed % corridorCameraVariants.length]
+  const publicAreaVariant = publicAreaCameraVariants[Math.floor(seed / 7) % publicAreaCameraVariants.length]
+  const warningVariant = warningCameraVariants[Math.floor(seed / 13) % warningCameraVariants.length]
   const cameraPrefix = (inspectedBuildingCode.value || 'COMMUNITY')
     + '-'
     + String(inspectedFloorNo.value).padStart(2, '0')
@@ -136,21 +174,21 @@ const cameraFeeds = computed<CameraFeed[]>(() => {
   return [
     {
       key: 'corridor',
-      label: modernMainView ? '过道主视角' : '老楼过道',
+      label: corridorVariant.label,
       code: cameraPrefix + '-C01',
-      image: modernMainView ? modernCorridorImage : oldCommunityCorridorImage,
+      image: corridorVariant.image,
     },
     {
       key: 'stairwell',
-      label: modernMainView ? '楼梯间' : '电梯厅',
+      label: publicAreaVariant.label,
       code: cameraPrefix + '-C02',
-      image: modernMainView ? oldCommunityCorridorImage : modernCorridorImage,
+      image: publicAreaVariant.image,
     },
     {
       key: 'warning',
-      label: 'AI 预警演示',
+      label: warningVariant.label,
       code: cameraPrefix + '-AI',
-      image: smokeWarningCorridorImage,
+      image: warningVariant.image,
     },
   ]
 })
@@ -595,7 +633,7 @@ watch(
 
           <section class="map3d-camera">
             <div class="map3d-section-title">
-              <strong>过道监控画面</strong>
+              <strong>楼层监控画面</strong>
               <small>{{ selectedCamera?.code }}</small>
             </div>
             <div class="map3d-camera-tabs" aria-label="模拟摄像头">
