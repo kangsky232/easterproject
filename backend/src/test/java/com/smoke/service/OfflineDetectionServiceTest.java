@@ -10,8 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
-
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -42,8 +40,8 @@ class OfflineDetectionServiceTest {
         device.setDeviceId("SMOKE-001");
         when(deviceMapper.selectList(any())).thenReturn(List.of(device));
         when(deviceMapper.update(isNull(), any())).thenReturn(0);
-        OfflineDetectionService service = new OfflineDetectionService(deviceMapper, alertService);
-        ReflectionTestUtils.setField(service, "offlineTimeoutSeconds", 60L);
+        OfflineDetectionService service = new OfflineDetectionService(
+                deviceMapper, alertService, new DeviceOnlinePolicy(60L));
 
         service.detectOfflineDevices();
 

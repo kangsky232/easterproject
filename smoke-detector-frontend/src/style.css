@@ -830,6 +830,7 @@ body {
 .map3d-head > div:first-child { min-width: 0; }
 .map3d-head h2 { margin: 2px 0 6px; font-size: 24px; }
 .map3d-head p { margin: 0; color: var(--ink-3); font-size: 13px; }
+.map3d-head .map3d-stale-warning { margin-top: 7px; color: var(--warning); font-weight: 600; }
 .map3d-summary { display: flex; flex: none; gap: 8px; flex-wrap: wrap; }
 .map3d-summary span { padding: 6px 11px; border: 1px solid var(--border); border-radius: 999px; font-size: 12px; }
 .map3d-summary .is-online { color: var(--good); border-color: rgba(12,163,12,.35); }

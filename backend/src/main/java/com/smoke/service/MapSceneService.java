@@ -22,6 +22,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,7 @@ public class MapSceneService {
     private final SmokeDataMapper smokeDataMapper;
     private final AlertRecordMapper alertRecordMapper;
     private final JdbcTemplate jdbcTemplate;
+    private final DeviceOnlinePolicy deviceOnlinePolicy;
 
     @Transactional
     public MapSceneResponse scene() {
@@ -57,6 +59,7 @@ public class MapSceneService {
                 .collect(Collectors.toMap(DeviceMapPosition::getDeviceId, Function.identity()));
         Map<String, SmokeData> latestByDevice = latestReadings(devices);
         Map<String, String> activeSeverity = activeSeverity();
+        LocalDateTime referenceTime = LocalDateTime.now();
 
         List<MapBuildingResponse> buildingResponses = buildings.stream()
                 .map(building -> new MapBuildingResponse(
@@ -70,7 +73,8 @@ public class MapSceneService {
                         positionByDevice.get(device.getDeviceId()),
                         buildingByCode,
                         latestByDevice.get(device.getDeviceId()),
-                        activeSeverity.get(device.getDeviceId())))
+                        activeSeverity.get(device.getDeviceId()),
+                        referenceTime))
                 .toList();
         return new MapSceneResponse("KANGROOM_DEMO", "康居智慧社区", 100, 100,
                 buildingResponses, deviceResponses);
@@ -168,9 +172,10 @@ public class MapSceneService {
             DeviceMapPosition position,
             Map<String, MapBuilding> buildingByCode,
             SmokeData latest,
-            String alertSeverity) {
+            String alertSeverity,
+            LocalDateTime referenceTime) {
         MapBuilding building = position == null ? null : buildingByCode.get(position.getBuildingCode());
-        boolean online = Integer.valueOf(1).equals(device.getStatus());
+        boolean online = deviceOnlinePolicy.isOnline(device, referenceTime);
         String status = AlertRecord.SEVERITY_DANGER.equals(alertSeverity)
                 || AlertRecord.SEVERITY_WARNING.equals(alertSeverity)
                 ? "ALARM" : online ? "ONLINE" : "OFFLINE";

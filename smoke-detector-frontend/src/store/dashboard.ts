@@ -83,6 +83,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const broadcasts = ref<BroadcastRaw[]>([])
   const workspace = ref<RoleWorkspace | null>(null)
   const mapScene = ref<MapScene | null>(null)
+  const mapSceneStale = ref(false)
   const broadcastActionId = ref<number | null>(null)
   const capabilities = ref<SystemCapabilities>({
     mode: 'UNKNOWN',
@@ -221,6 +222,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     broadcasts.value = []
     workspace.value = null
     mapScene.value = null
+    mapSceneStale.value = false
     overview.value = { totalDevices: 0, onlineDevices: 0, offlineDevices: 0, activeAlerts: 0 }
     selectedId.value = null
     chartTimes.value = []
@@ -264,7 +266,23 @@ export const useDashboardStore = defineStore('dashboard', () => {
   }
 
   async function fetchMapScene(): Promise<void> {
-    mapScene.value = await api.fetchMapScene()
+    try {
+      mapScene.value = await api.fetchMapScene()
+      mapSceneStale.value = false
+    } catch (error) {
+      mapSceneStale.value = true
+      if (mapScene.value) {
+        mapScene.value = {
+          ...mapScene.value,
+          devices: mapScene.value.devices.map((device) => ({
+            ...device,
+            online: false,
+            status: device.status === 'ALARM' ? 'ALARM' : 'OFFLINE',
+          })),
+        }
+      }
+      throw error
+    }
   }
 
   async function fetchStats(): Promise<void> {
@@ -741,6 +759,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     broadcasts,
     workspace,
     mapScene,
+    mapSceneStale,
     broadcastActionId,
     capabilities,
     overview,

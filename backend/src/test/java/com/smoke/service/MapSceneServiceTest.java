@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
@@ -62,6 +62,7 @@ class MapSceneServiceTest {
         device.setStatus(1);
         device.setBound(1);
         device.setBattery(88);
+        device.setLastHeartbeat(LocalDateTime.now().minusMinutes(2));
 
         DeviceMapPosition position = new DeviceMapPosition();
         position.setDeviceId("sensor-9");
@@ -90,7 +91,7 @@ class MapSceneServiceTest {
         when(alertRecordMapper.selectList(any())).thenReturn(List.of(alert));
         MapSceneService service = new MapSceneService(
                 mapBuildingMapper, deviceMapPositionMapper, deviceMapper,
-                smokeDataMapper, alertRecordMapper, jdbcTemplate);
+                smokeDataMapper, alertRecordMapper, jdbcTemplate, new DeviceOnlinePolicy(60L));
 
         var scene = service.scene();
 
@@ -102,6 +103,30 @@ class MapSceneServiceTest {
         assertEquals(new BigDecimal("320.50"), scene.devices().get(0).smoke());
         assertEquals("301", scene.devices().get(0).roomLabel());
         verify(jdbcTemplate).update(any(String.class));
-        assertTrue(scene.devices().get(0).online());
+        assertFalse(scene.devices().get(0).online());
+    }
+
+    @Test
+    void sceneMarksStaleStatusFlagOfflineWhenThereIsNoSensorAlarm() {
+        Device device = new Device();
+        device.setId(10L);
+        device.setDeviceId("sensor-10");
+        device.setStatus(1);
+        device.setBound(1);
+        device.setLastHeartbeat(LocalDateTime.now().minusMinutes(2));
+
+        when(mapBuildingMapper.selectList(any())).thenReturn(List.of());
+        when(deviceMapper.selectList(any())).thenReturn(List.of(device));
+        when(deviceMapPositionMapper.selectList(any())).thenReturn(List.of());
+        when(smokeDataMapper.selectLatestByDeviceIds(anyList())).thenReturn(List.of());
+        when(alertRecordMapper.selectList(any())).thenReturn(List.of());
+        MapSceneService service = new MapSceneService(
+                mapBuildingMapper, deviceMapPositionMapper, deviceMapper,
+                smokeDataMapper, alertRecordMapper, jdbcTemplate, new DeviceOnlinePolicy(60L));
+
+        var scene = service.scene();
+
+        assertEquals("OFFLINE", scene.devices().get(0).status());
+        assertFalse(scene.devices().get(0).online());
     }
 }

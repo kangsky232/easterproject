@@ -1,15 +1,27 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { MapBuilding, MapDevice, MapPositionPayload } from '@/api/types'
+import basementUtilityCorridorImage from '@/assets/corridor-cameras/basement-utility-corridor.jpg'
+import bicycleStorageCorridorImage from '@/assets/corridor-cameras/bicycle-storage-corridor.jpg'
+import brickStairLandingImage from '@/assets/corridor-cameras/brick-stair-landing.jpg'
+import communityClubCorridorImage from '@/assets/corridor-cameras/community-club-corridor.jpg'
 import electricalSmokeWarningImage from '@/assets/corridor-cameras/electrical-smoke-warning.jpg'
 import elevatorLobbyImage from '@/assets/corridor-cameras/elevator-lobby.jpg'
+import emergencyExitPassageImage from '@/assets/corridor-cameras/emergency-exit-passage.jpg'
+import entranceCorridorImage from '@/assets/corridor-cameras/entrance-corridor.jpg'
 import fireStairwellImage from '@/assets/corridor-cameras/fire-stairwell.jpg'
+import laundryLandingImage from '@/assets/corridor-cameras/laundry-landing.jpg'
 import modernCorridorImage from '@/assets/corridor-cameras/modern-corridor.jpg'
 import nightCorridorImage from '@/assets/corridor-cameras/night-corridor.jpg'
 import oldCommunityCorridorImage from '@/assets/corridor-cameras/old-community-corridor.jpg'
 import parkingConnectorImage from '@/assets/corridor-cameras/parking-connector.jpg'
+import rainNightCorridorImage from '@/assets/corridor-cameras/rain-night-corridor.jpg'
+import renovatedCorridorImage from '@/assets/corridor-cameras/renovated-corridor.jpg'
 import rentalHallwayImage from '@/assets/corridor-cameras/rental-hallway.jpg'
+import rooftopAccessImage from '@/assets/corridor-cameras/rooftop-access.jpg'
+import servicePipeCorridorImage from '@/assets/corridor-cameras/service-pipe-corridor.jpg'
 import smokeWarningCorridorImage from '@/assets/corridor-cameras/smoke-warning-corridor.jpg'
+import sunlitCorridorImage from '@/assets/corridor-cameras/sunlit-corridor.jpg'
 import { useClock } from '@/composables/useClock'
 import { useDashboardStore } from '@/store/dashboard'
 import { conc, fmtFull } from '@/utils/format'
@@ -67,17 +79,28 @@ interface CameraVariant {
   image: string
 }
 
-const corridorCameraVariants: readonly CameraVariant[] = [
-  { label: '过道主视角', image: modernCorridorImage },
-  { label: '老旧出租屋过道', image: rentalHallwayImage },
-  { label: '夜间过道', image: nightCorridorImage },
-]
-
-const publicAreaCameraVariants: readonly CameraVariant[] = [
-  { label: '老楼公共区域', image: oldCommunityCorridorImage },
-  { label: '消防楼梯', image: fireStairwellImage },
+// 当前社区共 19 层，常规机位一层一张独立图片；第二机位使用错位索引，
+// 因此同一楼层的两个常规机位也不会展示同一张图。
+const floorCameraVariants: readonly CameraVariant[] = [
+  { label: '首层入户门厅', image: entranceCorridorImage },
+  { label: '现代住宅过道', image: modernCorridorImage },
+  { label: '午后阳光过道', image: sunlitCorridorImage },
   { label: '电梯厅', image: elevatorLobbyImage },
+  { label: '新装住宅过道', image: renovatedCorridorImage },
+  { label: '屋面入口', image: rooftopAccessImage },
+  { label: '老旧出租屋过道', image: rentalHallwayImage },
+  { label: '老楼梯间', image: brickStairLandingImage },
+  { label: '晾晒平台', image: laundryLandingImage },
+  { label: '雨夜走廊', image: rainNightCorridorImage },
+  { label: '老楼公共过道', image: oldCommunityCorridorImage },
+  { label: '消防楼梯', image: fireStairwellImage },
+  { label: '公共活动区走廊', image: communityClubCorridorImage },
+  { label: '自行车库连廊', image: bicycleStorageCorridorImage },
+  { label: '夜间住宅过道', image: nightCorridorImage },
+  { label: '消防管线走廊', image: servicePipeCorridorImage },
   { label: '地下车库连廊', image: parkingConnectorImage },
+  { label: '地下设备连廊', image: basementUtilityCorridorImage },
+  { label: '疏散出口通道', image: emergencyExitPassageImage },
 ]
 
 const warningCameraVariants: readonly CameraVariant[] = [
@@ -162,11 +185,26 @@ function cameraLocationSeed(buildingCode: string, floorNo: number): number {
   return hash >>> 0
 }
 
+function floorCameraIndex(buildingCode: string, floorNo: number): number {
+  const buildings = [...(scene.value?.buildings ?? [])]
+    .sort((first, second) => first.buildingCode.localeCompare(second.buildingCode))
+  let offset = 0
+  for (const building of buildings) {
+    if (building.buildingCode === buildingCode) {
+      return (offset + Math.max(0, floorNo - 1)) % floorCameraVariants.length
+    }
+    offset += building.floors
+  }
+  return cameraLocationSeed(buildingCode, floorNo) % floorCameraVariants.length
+}
+
 const cameraFeeds = computed<CameraFeed[]>(() => {
-  const seed = cameraLocationSeed(inspectedBuildingCode.value, inspectedFloorNo.value)
-  const corridorVariant = corridorCameraVariants[seed % corridorCameraVariants.length]
-  const publicAreaVariant = publicAreaCameraVariants[Math.floor(seed / 7) % publicAreaCameraVariants.length]
-  const warningVariant = warningCameraVariants[Math.floor(seed / 13) % warningCameraVariants.length]
+  const primaryIndex = floorCameraIndex(inspectedBuildingCode.value, inspectedFloorNo.value)
+  const secondaryIndex = (primaryIndex + Math.floor(floorCameraVariants.length / 2))
+    % floorCameraVariants.length
+  const corridorVariant = floorCameraVariants[primaryIndex]
+  const publicAreaVariant = floorCameraVariants[secondaryIndex]
+  const warningVariant = warningCameraVariants[primaryIndex % warningCameraVariants.length]
   const cameraPrefix = (inspectedBuildingCode.value || 'COMMUNITY')
     + '-'
     + String(inspectedFloorNo.value).padStart(2, '0')
@@ -476,6 +514,9 @@ watch(
         <span class="role-workspace__eyebrow">SIMULATED DIGITAL TWIN</span>
         <h2>{{ scene?.sceneName ?? '模拟 3D 社区地图' }}</h2>
         <p>点击楼栋立面上的楼层，即可联动查看过道画面、本层设备和实时告警状态。</p>
+        <p v-if="store.mapSceneStale" class="map3d-stale-warning">
+          地图状态刷新失败，旧的在线标记已按离线处理，请检查公网 API 连接。
+        </p>
       </div>
       <div class="map3d-summary">
         <span class="is-online">在线 {{ onlineCount }}</span>
@@ -654,6 +695,7 @@ watch(
               :class="{ 'map3d-camera-frame--warning': selectedCamera.key === 'warning' }"
             >
               <img
+                :key="selectedCamera.code + ':' + selectedCamera.image"
                 :src="selectedCamera.image"
                 :alt="formatBuildingName(inspectedBuilding) + '第' + formatChineseNumber(inspectedFloorNo) + '层' + selectedCamera.label + '模拟画面'"
                 decoding="async"
@@ -671,7 +713,7 @@ watch(
                 <span>{{ floorDevices.length }} 台感知设备</span>
               </figcaption>
             </figure>
-            <p class="map3d-camera-note">画面由 AI 生成，仅用于交互演示，当前尚未接入真实摄像头视频流。</p>
+            <p class="map3d-camera-note">当前 19 个楼层的常规机位均使用独立 AI 生成图片；仅用于交互演示，尚未接入真实摄像头视频流。</p>
           </section>
 
           <section class="map3d-floor-devices">

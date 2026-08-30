@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.smoke.entity.Device;
 import com.smoke.mapper.DeviceMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,14 +17,12 @@ public class OfflineDetectionService {
 
     private final DeviceMapper deviceMapper;
     private final AlertService alertService;
-
-    @Value("${smoke.offline-timeout-seconds:60}")
-    private long offlineTimeoutSeconds;
+    private final DeviceOnlinePolicy deviceOnlinePolicy;
 
     @Scheduled(fixedDelayString = "${smoke.offline-check-interval-ms:3000}")
     @Transactional
     public void detectOfflineDevices() {
-        LocalDateTime cutoff = LocalDateTime.now().minusSeconds(offlineTimeoutSeconds);
+        LocalDateTime cutoff = deviceOnlinePolicy.offlineCutoff(LocalDateTime.now());
         List<Device> timedOutDevices = deviceMapper.selectList(Wrappers.<Device>lambdaQuery()
                 .eq(Device::getBound, 1)
                 .eq(Device::getStatus, 1)
