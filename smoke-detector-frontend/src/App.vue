@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { MAX_REFRESH_MS, MODULE_LABELS, REFRESH_MS, type ModuleKey } from '@/constants'
+import { MAX_REFRESH_MS, MODULE_GROUPS, MODULE_LABELS, REFRESH_MS, type ModuleKey } from '@/constants'
 import { useDashboardStore } from '@/store/dashboard'
 import { resumeAudio } from '@/utils/audio'
 import TopBar from '@/components/TopBar.vue'
@@ -24,9 +24,17 @@ import UserAdminEntryView from '@/components/UserAdminEntryView.vue'
 
 const store = useDashboardStore()
 
-const tabs = computed(() =>
-  store.visibleModules.map((key) => ({ key, label: MODULE_LABELS[key] })),
-)
+const navigationGroups = computed(() => {
+  const visible = new Set(store.visibleModules)
+  return MODULE_GROUPS.map((group) => ({
+    ...group,
+    tabs: group.modules
+      .filter((key) => visible.has(key))
+      .map((key) => ({ key, label: MODULE_LABELS[key] })),
+  })).filter((group) => group.tabs.length > 0)
+})
+
+const tabs = computed(() => navigationGroups.value.flatMap((group) => group.tabs))
 
 const activeTab = ref<ModuleKey>('monitor')
 const showBroadcast = ref(false)
@@ -54,7 +62,9 @@ function onSimulate(): void {
 }
 
 watch(tabs, (available) => {
-  if (!available.some((tab) => tab.key === activeTab.value)) activeTab.value = 'monitor'
+  if (!available.some((tab) => tab.key === activeTab.value)) {
+    activeTab.value = available[0]?.key ?? 'monitor'
+  }
 })
 
 // 轮询 + 断线退避：后端在线按固定周期刷新，离线时指数退避，恢复后复位。
@@ -82,18 +92,27 @@ onUnmounted(() => {
 <template>
   <TopBar @broadcast="openBroadcast" @simulate="onSimulate" @show-alarms="scrollToAlarms" />
 
-  <nav v-if="store.token" class="tabs" role="tablist" aria-label="功能导航">
-    <button
-      v-for="tab in tabs"
-      :key="tab.key"
-      class="tab"
-      role="tab"
-      :aria-selected="activeTab === tab.key"
-      :class="{ active: activeTab === tab.key }"
-      @click="switchTab(tab.key)"
+  <nav v-if="store.token" class="module-nav" aria-label="功能导航">
+    <section
+      v-for="group in navigationGroups"
+      :key="group.key"
+      class="module-nav__group"
+      :aria-labelledby="`module-group-${group.key}`"
     >
-      {{ tab.label }}
-    </button>
+      <span :id="`module-group-${group.key}`" class="module-nav__label">{{ group.label }}</span>
+      <div class="module-nav__tabs" :aria-label="group.label">
+        <button
+          v-for="tab in group.tabs"
+          :key="tab.key"
+          class="tab"
+          :aria-current="activeTab === tab.key ? 'page' : undefined"
+          :class="{ active: activeTab === tab.key }"
+          @click="switchTab(tab.key)"
+        >
+          {{ tab.label }}
+        </button>
+      </div>
+    </section>
   </nav>
 
   <AlertBar v-if="store.token" @show-alarms="scrollToAlarms" />

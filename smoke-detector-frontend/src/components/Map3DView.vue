@@ -1,12 +1,26 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { MapBuilding, MapDevice, MapPositionPayload } from '@/api/types'
+import modernCorridorImage from '@/assets/corridor-cameras/modern-corridor.jpg'
+import oldCommunityCorridorImage from '@/assets/corridor-cameras/old-community-corridor.jpg'
+import smokeWarningCorridorImage from '@/assets/corridor-cameras/smoke-warning-corridor.jpg'
+import { useClock } from '@/composables/useClock'
 import { useDashboardStore } from '@/store/dashboard'
 import { conc, fmtFull } from '@/utils/format'
 
 interface Point {
   x: number
   y: number
+}
+
+type SceneStatus = 'ONLINE' | 'OFFLINE' | 'ALARM' | 'EMPTY'
+type CameraKey = 'corridor' | 'stairwell' | 'warning'
+
+interface FloorVisual {
+  floorNo: number
+  points: string
+  center: Point
+  status: SceneStatus
 }
 
 interface BuildingVisual {
@@ -16,10 +30,11 @@ interface BuildingVisual {
     points: string
     tone: 'a' | 'b'
     floorLines: Array<{ a: Point; b: Point }>
+    floorAreas: FloorVisual[]
   }>
   center: Point
   depth: number
-  status: 'ONLINE' | 'OFFLINE' | 'ALARM' | 'EMPTY'
+  status: SceneStatus
 }
 
 interface DeviceVisual {
@@ -28,9 +43,26 @@ interface DeviceVisual {
   labelWidth: number
 }
 
+interface FloorSummary {
+  floorNo: number
+  devices: MapDevice[]
+  status: SceneStatus
+}
+
+interface CameraFeed {
+  key: CameraKey
+  label: string
+  code: string
+  image: string
+}
+
 const store = useDashboardStore()
+const now = useClock()
 const rotation = ref(-34)
 const zoom = ref(1)
+const inspectedBuildingCode = ref('')
+const inspectedFloorNo = ref(1)
+const selectedCameraKey = ref<CameraKey>('corridor')
 const selectedDeviceId = ref<number | null>(null)
 const editBuilding = ref('')
 const editFloor = ref(1)
@@ -38,17 +70,103 @@ const editRoom = ref('101')
 const editX = ref(4)
 const editZ = ref(4)
 const saving = ref(false)
+let inspectionInitialized = false
 
 const scene = computed(() => store.mapScene)
 const selectedDevice = computed(() =>
   scene.value?.devices.find((device) => device.id === selectedDeviceId.value) ?? null,
 )
-const selectedBuilding = computed(() =>
+const inspectedBuilding = computed(() =>
+  scene.value?.buildings.find((building) => building.buildingCode === inspectedBuildingCode.value) ?? null,
+)
+const editSelectedBuilding = computed(() =>
   scene.value?.buildings.find((building) => building.buildingCode === editBuilding.value) ?? null,
 )
 const alarmCount = computed(() => scene.value?.devices.filter((item) => item.status === 'ALARM').length ?? 0)
 const onlineCount = computed(() => scene.value?.devices.filter((item) => item.status === 'ONLINE').length ?? 0)
 const offlineCount = computed(() => scene.value?.devices.filter((item) => item.status === 'OFFLINE').length ?? 0)
+
+function resolveStatus(devices: MapDevice[]): SceneStatus {
+  if (devices.some((device) => device.status === 'ALARM')) return 'ALARM'
+  if (devices.some((device) => device.status === 'ONLINE')) return 'ONLINE'
+  if (devices.length > 0) return 'OFFLINE'
+  return 'EMPTY'
+}
+
+function statusLabel(status: SceneStatus): string {
+  if (status === 'ALARM') return '告警'
+  if (status === 'ONLINE') return '在线'
+  if (status === 'OFFLINE') return '离线'
+  return '暂无设备'
+}
+
+const inspectedFloorSummaries = computed<FloorSummary[]>(() => {
+  const building = inspectedBuilding.value
+  if (!building) return []
+  const buildingDevices = (scene.value?.devices ?? []).filter(
+    (device) => device.buildingCode === building.buildingCode,
+  )
+  return Array.from({ length: building.floors }, (_, index) => {
+    const floorNo = building.floors - index
+    const devices = buildingDevices.filter((device) => device.floorNo === floorNo)
+    return { floorNo, devices, status: resolveStatus(devices) }
+  })
+})
+
+const floorDevices = computed(
+  () => inspectedFloorSummaries.value.find((floor) => floor.floorNo === inspectedFloorNo.value)?.devices ?? [],
+)
+const selectedFloorStatus = computed<SceneStatus>(
+  () => inspectedFloorSummaries.value.find((floor) => floor.floorNo === inspectedFloorNo.value)?.status ?? 'EMPTY',
+)
+const selectedFloorDevice = computed(
+  () => floorDevices.value.find((device) => device.id === selectedDeviceId.value) ?? null,
+)
+
+const cameraFeeds = computed<CameraFeed[]>(() => {
+  const buildingIndex = Math.max(
+    0,
+    scene.value?.buildings.findIndex((building) => building.buildingCode === inspectedBuildingCode.value) ?? 0,
+  )
+  const modernMainView = (buildingIndex + inspectedFloorNo.value) % 2 === 0
+  const cameraPrefix = (inspectedBuildingCode.value || 'COMMUNITY')
+    + '-'
+    + String(inspectedFloorNo.value).padStart(2, '0')
+    + 'F'
+  return [
+    {
+      key: 'corridor',
+      label: modernMainView ? '过道主视角' : '老楼过道',
+      code: cameraPrefix + '-C01',
+      image: modernMainView ? modernCorridorImage : oldCommunityCorridorImage,
+    },
+    {
+      key: 'stairwell',
+      label: modernMainView ? '楼梯间' : '电梯厅',
+      code: cameraPrefix + '-C02',
+      image: modernMainView ? oldCommunityCorridorImage : modernCorridorImage,
+    },
+    {
+      key: 'warning',
+      label: 'AI 预警演示',
+      code: cameraPrefix + '-AI',
+      image: smokeWarningCorridorImage,
+    },
+  ]
+})
+const selectedCamera = computed(
+  () => cameraFeeds.value.find((camera) => camera.key === selectedCameraKey.value) ?? cameraFeeds.value[0],
+)
+const cameraTimestamp = computed(() =>
+  new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(now.value),
+)
 
 function project(x: number, z: number, height = 0): Point {
   const width = scene.value?.width ?? 100
@@ -58,17 +176,24 @@ function project(x: number, z: number, height = 0): Point {
   const dz = z - depth / 2
   const rx = dx * Math.cos(angle) - dz * Math.sin(angle)
   const rz = dx * Math.sin(angle) + dz * Math.cos(angle)
-  return { x: 500 + rx * 7, y: 385 + rz * 3.35 - height * 6 }
+  return { x: 500 + rx * 7, y: 405 + rz * 3.35 - height * 6 }
 }
 
 function points(items: Point[]): string {
-  return items.map((item) => `${item.x.toFixed(1)},${item.y.toFixed(1)}`).join(' ')
+  return items.map((item) => item.x.toFixed(1) + ',' + item.y.toFixed(1)).join(' ')
 }
 
 function lerp(from: Point, to: Point, ratio: number): Point {
   return {
     x: from.x + (to.x - from.x) * ratio,
     y: from.y + (to.y - from.y) * ratio,
+  }
+}
+
+function midpoint(items: Point[]): Point {
+  return {
+    x: items.reduce((sum, item) => sum + item.x, 0) / items.length,
+    y: items.reduce((sum, item) => sum + item.y, 0) / items.length,
   }
 }
 
@@ -79,7 +204,7 @@ function formatChineseNumber(value: number): string {
   if (value < 10) return chineseDigits[value]
   const tens = Math.floor(value / 10)
   const ones = value % 10
-  return `${tens === 1 ? '' : chineseDigits[tens]}十${ones === 0 ? '' : chineseDigits[ones]}`
+  return (tens === 1 ? '' : chineseDigits[tens]) + '十' + (ones === 0 ? '' : chineseDigits[ones])
 }
 
 function formatBuildingName(building: MapBuilding): string {
@@ -106,22 +231,16 @@ const buildingVisuals = computed<BuildingVisual[]>(() =>
     const top = [project(x, z, height), project(x + width, z, height), project(x + width, z + depth, height), project(x, z + depth, height)]
     const center = project(x + width / 2, z + depth / 2, height)
     const visibleSides = [[0, 1], [1, 2], [2, 3], [3, 0]]
-      .map(([from, to], index) => ({
+      .map(([from, to]) => ({
         from,
         to,
-        index,
         depth: (bottom[from].y + bottom[to].y) / 2,
       }))
       .sort((a, b) => b.depth - a.depth)
       .slice(0, 2)
-    const buildingDevices = (scene.value?.devices ?? []).filter((device) => device.buildingCode === building.buildingCode)
-    const status: BuildingVisual['status'] = buildingDevices.some((device) => device.status === 'ALARM')
-      ? 'ALARM'
-      : buildingDevices.some((device) => device.status === 'ONLINE')
-        ? 'ONLINE'
-        : buildingDevices.length > 0
-          ? 'OFFLINE'
-          : 'EMPTY'
+    const buildingDevices = (scene.value?.devices ?? []).filter(
+      (device) => device.buildingCode === building.buildingCode,
+    )
     return {
       building,
       top: points(top),
@@ -135,10 +254,28 @@ const buildingVisuals = computed<BuildingVisual[]>(() =>
             b: lerp(bottom[side.to], top[side.to], ratio),
           }
         }),
+        floorAreas: Array.from({ length: building.floors }, (_, floorIndex) => {
+          const floorNo = floorIndex + 1
+          const low = floorIndex / building.floors
+          const high = floorNo / building.floors
+          const corners = [
+            lerp(bottom[side.from], top[side.from], low),
+            lerp(bottom[side.to], top[side.to], low),
+            lerp(bottom[side.to], top[side.to], high),
+            lerp(bottom[side.from], top[side.from], high),
+          ]
+          const devices = buildingDevices.filter((device) => device.floorNo === floorNo)
+          return {
+            floorNo,
+            points: points(corners),
+            center: midpoint(corners),
+            status: resolveStatus(devices),
+          }
+        }),
       })),
       center,
       depth: project(x + width / 2, z + depth / 2).y,
-      status,
+      status: resolveStatus(buildingDevices),
     }
   }).sort((a, b) => a.depth - b.depth),
 )
@@ -150,18 +287,57 @@ const deviceVisuals = computed<DeviceVisual[]>(() =>
     if (!building || device.floorNo == null) return []
     const x = Number(building.positionX) + Number(device.positionX ?? 0)
     const z = Number(building.positionZ) + Number(device.positionZ ?? 0)
-    const label = device.roomLabel || `第${formatChineseNumber(device.floorNo)}层`
+    const label = device.roomLabel || '第' + formatChineseNumber(device.floorNo) + '层'
     return [{
       device,
-      point: project(x, z, device.floorNo * 4.6 + 1.5),
+      point: project(x, z, (device.floorNo - 0.5) * 4.6),
       labelWidth: Math.max(42, label.length * 10 + 18),
     }]
   }),
 )
 
+function inspectFloor(buildingCode: string, floorNo: number): void {
+  const building = scene.value?.buildings.find((item) => item.buildingCode === buildingCode)
+  if (!building) return
+  const nextFloor = Math.min(building.floors, Math.max(1, floorNo))
+  inspectedBuildingCode.value = buildingCode
+  inspectedFloorNo.value = nextFloor
+  const devices = (scene.value?.devices ?? []).filter(
+    (device) => device.buildingCode === buildingCode && device.floorNo === nextFloor,
+  )
+  const preferredDevice = devices.find((device) => device.status === 'ALARM')
+    ?? devices.find((device) => device.status === 'ONLINE')
+    ?? devices[0]
+  selectedDeviceId.value = preferredDevice?.id ?? null
+  selectedCameraKey.value = devices.some((device) => device.status === 'ALARM') ? 'warning' : 'corridor'
+}
+
+function inspectBuilding(building: MapBuilding): void {
+  if (inspectedBuildingCode.value === building.buildingCode) {
+    inspectFloor(building.buildingCode, inspectedFloorNo.value)
+    return
+  }
+  const buildingDevices = (scene.value?.devices ?? []).filter(
+    (device) => device.buildingCode === building.buildingCode && device.floorNo != null,
+  )
+  const preferredDevice = buildingDevices.find((device) => device.status === 'ALARM')
+    ?? buildingDevices.find((device) => device.status === 'ONLINE')
+    ?? buildingDevices[0]
+  inspectFloor(building.buildingCode, preferredDevice?.floorNo ?? 1)
+}
+
 function chooseDevice(device: MapDevice): void {
+  if (device.buildingCode && device.floorNo != null) {
+    inspectedBuildingCode.value = device.buildingCode
+    inspectedFloorNo.value = device.floorNo
+    selectedCameraKey.value = device.status === 'ALARM' ? 'warning' : 'corridor'
+  }
   selectedDeviceId.value = device.id
   store.selectDevice(device.id)
+}
+
+function selectCamera(camera: CameraKey): void {
+  selectedCameraKey.value = camera
 }
 
 function rotate(delta: number): void {
@@ -170,6 +346,14 @@ function rotate(delta: number): void {
 
 function changeZoom(delta: number): void {
   zoom.value = Math.min(1.35, Math.max(0.75, Number((zoom.value + delta).toFixed(2))))
+}
+
+function syncEditForm(device: MapDevice): void {
+  editBuilding.value = device.buildingCode ?? scene.value?.buildings[0]?.buildingCode ?? ''
+  editFloor.value = device.floorNo ?? 1
+  editRoom.value = device.roomLabel ?? '101'
+  editX.value = Number(device.positionX ?? 4)
+  editZ.value = Number(device.positionZ ?? 4)
 }
 
 async function savePosition(): Promise<void> {
@@ -184,34 +368,67 @@ async function savePosition(): Promise<void> {
   }
   saving.value = true
   try {
-    await store.saveMapPosition(device.id, payload)
+    const saved = await store.saveMapPosition(device.id, payload)
+    if (saved) {
+      inspectedBuildingCode.value = payload.buildingCode
+      inspectedFloorNo.value = payload.floorNo
+      const updated = scene.value?.devices.find((item) => item.id === device.id)
+      if (updated) syncEditForm(updated)
+    }
   } finally {
     saving.value = false
   }
 }
 
 watch(
-  () => scene.value?.devices,
-  (devices) => {
-    if (!devices?.length) {
+  scene,
+  (current) => {
+    if (!current?.buildings.length) {
+      inspectionInitialized = false
+      inspectedBuildingCode.value = ''
       selectedDeviceId.value = null
       return
     }
-    if (!devices.some((device) => device.id === selectedDeviceId.value)) {
-      selectedDeviceId.value = devices.find((device) => device.status === 'ALARM')?.id ?? devices[0].id
+
+    const selectedBuildingStillExists = current.buildings.some(
+      (building) => building.buildingCode === inspectedBuildingCode.value,
+    )
+    if (!inspectionInitialized || !selectedBuildingStillExists) {
+      const preferredDevice = current.devices.find((device) => device.status === 'ALARM' && device.buildingCode && device.floorNo != null)
+        ?? current.devices.find((device) => device.buildingCode && device.floorNo != null)
+      const defaultBuilding = preferredDevice?.buildingCode
+        ? current.buildings.find((building) => building.buildingCode === preferredDevice.buildingCode)
+        : current.buildings[0]
+      if (defaultBuilding) inspectFloor(defaultBuilding.buildingCode, preferredDevice?.floorNo ?? 1)
+      inspectionInitialized = true
+      return
+    }
+
+    const building = current.buildings.find((item) => item.buildingCode === inspectedBuildingCode.value)
+    if (building && (inspectedFloorNo.value < 1 || inspectedFloorNo.value > building.floors)) {
+      inspectFloor(building.buildingCode, Math.min(building.floors, Math.max(1, inspectedFloorNo.value)))
+      return
+    }
+
+    if (selectedDeviceId.value !== null && !current.devices.some((device) => device.id === selectedDeviceId.value)) {
+      const replacement = current.devices.find(
+        (device) => device.buildingCode === inspectedBuildingCode.value && device.floorNo === inspectedFloorNo.value,
+      )
+      selectedDeviceId.value = replacement?.id ?? null
     }
   },
   { immediate: true },
 )
 
-watch(selectedDevice, (device) => {
-  if (!device) return
-  editBuilding.value = device.buildingCode ?? scene.value?.buildings[0]?.buildingCode ?? ''
-  editFloor.value = device.floorNo ?? 1
-  editRoom.value = device.roomLabel ?? '101'
-  editX.value = Number(device.positionX ?? 4)
-  editZ.value = Number(device.positionZ ?? 4)
-}, { immediate: true })
+watch(
+  selectedDeviceId,
+  (id, previousId) => {
+    if (id == null || id === previousId) return
+    const device = scene.value?.devices.find((item) => item.id === id)
+    if (device) syncEditForm(device)
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -220,7 +437,7 @@ watch(selectedDevice, (device) => {
       <div>
         <span class="role-workspace__eyebrow">SIMULATED DIGITAL TWIN</span>
         <h2>{{ scene?.sceneName ?? '模拟 3D 社区地图' }}</h2>
-        <p>楼栋、楼层、房间和设备坐标来自后端数据库，颜色随设备与告警状态实时变化。</p>
+        <p>点击楼栋立面上的楼层，即可联动查看过道画面、本层设备和实时告警状态。</p>
       </div>
       <div class="map3d-summary">
         <span class="is-online">在线 {{ onlineCount }}</span>
@@ -240,12 +457,12 @@ watch(selectedDevice, (device) => {
         </div>
 
         <div v-if="!scene" class="map3d-empty">地图数据加载中…</div>
-        <svg v-else viewBox="0 0 1000 620" role="img" aria-label="智慧社区模拟三维地图">
-          <g class="map3d-world" :style="{ transform: `scale(${zoom})`, transformOrigin: '500px 330px' }">
+        <svg v-else viewBox="0 0 1000 660" role="group" aria-label="可点击楼栋和楼层的智慧社区模拟三维地图">
+          <g class="map3d-world" :style="{ transform: 'scale(' + zoom + ')', transformOrigin: '500px 350px' }">
             <polygon class="map3d-ground" :points="points([project(0, 0), project(100, 0), project(100, 100), project(0, 100)])" />
             <line
               v-for="(line, index) in gridLines"
-              :key="`grid-${index}`"
+              :key="'grid-' + index"
               class="map3d-gridline"
               :x1="line.a.x" :y1="line.a.y" :x2="line.b.x" :y2="line.b.y"
             />
@@ -254,22 +471,55 @@ watch(selectedDevice, (device) => {
               v-for="visual in buildingVisuals"
               :key="visual.building.buildingCode"
               class="map3d-building"
-              :class="`map3d-building--${visual.status.toLowerCase()}`"
+              :class="[
+                'map3d-building--' + visual.status.toLowerCase(),
+                { selected: inspectedBuildingCode === visual.building.buildingCode },
+              ]"
+              @click="inspectBuilding(visual.building)"
             >
-              <g v-for="(side, sideIndex) in visual.sides" :key="`${visual.building.buildingCode}-side-${sideIndex}`">
-                <polygon :class="`map3d-building__side map3d-building__side--${side.tone}`" :points="side.points" />
+              <g v-for="(side, sideIndex) in visual.sides" :key="visual.building.buildingCode + '-side-' + sideIndex">
+                <polygon :class="'map3d-building__side map3d-building__side--' + side.tone" :points="side.points" />
                 <line
                   v-for="(floorLine, floorIndex) in side.floorLines"
-                  :key="`${visual.building.buildingCode}-floor-${sideIndex}-${floorIndex}`"
+                  :key="visual.building.buildingCode + '-line-' + sideIndex + '-' + floorIndex"
                   class="map3d-building__floor-line"
                   :x1="floorLine.a.x" :y1="floorLine.a.y" :x2="floorLine.b.x" :y2="floorLine.b.y"
                 />
+                <template v-if="sideIndex === 0">
+                  <g
+                    v-for="floorArea in side.floorAreas"
+                    :key="visual.building.buildingCode + '-floor-' + floorArea.floorNo"
+                    class="map3d-floor-area"
+                    :class="[
+                      'map3d-floor-area--' + floorArea.status.toLowerCase(),
+                      {
+                        selected: inspectedBuildingCode === visual.building.buildingCode
+                          && inspectedFloorNo === floorArea.floorNo,
+                      },
+                    ]"
+                    tabindex="0"
+                    role="button"
+                    :aria-label="formatBuildingName(visual.building) + '第' + formatChineseNumber(floorArea.floorNo) + '层，' + statusLabel(floorArea.status)"
+                    @click.stop="inspectFloor(visual.building.buildingCode, floorArea.floorNo)"
+                    @keydown.enter.stop="inspectFloor(visual.building.buildingCode, floorArea.floorNo)"
+                    @keydown.space.stop.prevent="inspectFloor(visual.building.buildingCode, floorArea.floorNo)"
+                  >
+                    <polygon class="map3d-floor-area__shape" :points="floorArea.points" />
+                    <text
+                      v-if="inspectedBuildingCode === visual.building.buildingCode"
+                      class="map3d-floor-area__label"
+                      :x="floorArea.center.x"
+                      :y="floorArea.center.y + 3"
+                      text-anchor="middle"
+                    >{{ floorArea.floorNo }}层</text>
+                  </g>
+                </template>
               </g>
               <polygon class="map3d-building__top" :points="visual.top" />
-              <g class="map3d-building__label" :transform="`translate(${visual.center.x} ${visual.center.y - 18})`">
-                <rect x="-66" y="-31" width="132" height="38" rx="8" />
+              <g class="map3d-building__label" :transform="'translate(' + visual.center.x + ' ' + (visual.center.y - 18) + ')'">
+                <rect x="-76" y="-31" width="152" height="38" rx="8" />
                 <text class="map3d-building__name" x="0" y="-16" text-anchor="middle">{{ formatBuildingName(visual.building) }}</text>
-                <text class="map3d-building__meta" x="0" y="-3" text-anchor="middle">共{{ formatChineseNumber(visual.building.floors) }}层</text>
+                <text class="map3d-building__meta" x="0" y="-3" text-anchor="middle">共{{ formatChineseNumber(visual.building.floors) }}层 · 点击楼层</text>
               </g>
             </g>
 
@@ -277,19 +527,23 @@ watch(selectedDevice, (device) => {
               v-for="visual in deviceVisuals"
               :key="visual.device.id"
               class="map3d-device"
-              :class="[`map3d-device--${visual.device.status.toLowerCase()}`, { selected: selectedDeviceId === visual.device.id }]"
+              :class="[
+                'map3d-device--' + visual.device.status.toLowerCase(),
+                { selected: selectedDeviceId === visual.device.id },
+              ]"
               tabindex="0"
               role="button"
-              :aria-label="`${visual.device.deviceName || visual.device.deviceId}，${visual.device.status}`"
-              @click="chooseDevice(visual.device)"
-              @keydown.enter="chooseDevice(visual.device)"
+              :aria-label="(visual.device.deviceName || visual.device.deviceId) + '，' + statusLabel(visual.device.status)"
+              @click.stop="chooseDevice(visual.device)"
+              @keydown.enter.stop="chooseDevice(visual.device)"
+              @keydown.space.stop.prevent="chooseDevice(visual.device)"
             >
               <line :x1="visual.point.x" :y1="visual.point.y" :x2="visual.point.x" :y2="visual.point.y + 20" />
               <circle :cx="visual.point.x" :cy="visual.point.y" r="9" />
               <circle class="map3d-device__pulse" :cx="visual.point.x" :cy="visual.point.y" r="15" />
-              <g class="map3d-device__label" :transform="`translate(${visual.point.x + 13} ${visual.point.y - 24})`">
+              <g class="map3d-device__label" :transform="'translate(' + (visual.point.x + 13) + ' ' + (visual.point.y - 24) + ')'">
                 <rect x="0" y="0" :width="visual.labelWidth" height="22" rx="6" />
-                <text x="9" y="15">{{ visual.device.roomLabel || `第${formatChineseNumber(visual.device.floorNo ?? 0)}层` }}</text>
+                <text x="9" y="15">{{ visual.device.roomLabel || '第' + formatChineseNumber(visual.device.floorNo ?? 0) + '层' }}</text>
               </g>
             </g>
           </g>
@@ -300,53 +554,157 @@ watch(selectedDevice, (device) => {
           <span><i class="legend-dot legend-dot--alarm"></i>告警</span>
           <span><i class="legend-dot legend-dot--offline"></i>离线</span>
         </div>
+        <div class="map3d-guide">点击楼栋立面选择楼层</div>
       </div>
 
       <aside class="map3d-detail panel">
-        <template v-if="selectedDevice">
+        <template v-if="inspectedBuilding">
           <div class="map3d-detail__head">
             <div>
-              <span class="role-workspace__eyebrow">设备空间详情</span>
-              <h3>{{ selectedDevice.deviceName || selectedDevice.deviceId }}</h3>
+              <span class="role-workspace__eyebrow">楼层巡查与视觉复核</span>
+              <h3>{{ formatBuildingName(inspectedBuilding) }} · 第{{ formatChineseNumber(inspectedFloorNo) }}层</h3>
             </div>
-            <span class="map3d-state" :class="`map3d-state--${selectedDevice.status.toLowerCase()}`">
-              {{ selectedDevice.status === 'ONLINE' ? '在线' : selectedDevice.status === 'ALARM' ? '告警' : '离线' }}
+            <span class="map3d-state" :class="'map3d-state--' + selectedFloorStatus.toLowerCase()">
+              {{ statusLabel(selectedFloorStatus) }}
             </span>
           </div>
-          <dl class="map3d-location">
-            <div><dt>设备编号</dt><dd>{{ selectedDevice.deviceId }}</dd></div>
-            <div><dt>空间位置</dt><dd>{{ selectedDevice.buildingName }} 第{{ formatChineseNumber(selectedDevice.floorNo ?? 0) }}层 {{ selectedDevice.roomLabel }}</dd></div>
-            <div><dt>安装说明</dt><dd>{{ selectedDevice.location || '—' }}</dd></div>
-            <div><dt>最新数据</dt><dd>{{ fmtFull(selectedDevice.latestTimestamp) }}</dd></div>
-          </dl>
-          <div class="map3d-metrics">
-            <span><b>{{ conc(selectedDevice.smoke) }}</b> ppm<small>烟雾</small></span>
-            <span><b>{{ conc(selectedDevice.temperature) }}</b> ℃<small>温度</small></span>
-            <span><b>{{ conc(selectedDevice.coValue) }}</b> ppm<small>CO</small></span>
-            <span><b>{{ selectedDevice.battery ?? '—' }}</b> %<small>电量</small></span>
-          </div>
 
-          <form v-if="store.canManageMapPositions" class="map3d-form" @submit.prevent="savePosition">
-            <h4>调整数据库位置</h4>
-            <label>楼栋
-              <select v-model="editBuilding">
-                <option v-for="building in scene?.buildings" :key="building.buildingCode" :value="building.buildingCode">
-                  {{ building.buildingName }}
-                </option>
-              </select>
-            </label>
-            <div class="map3d-form__row">
-              <label>楼层<input v-model.number="editFloor" type="number" min="1" :max="selectedBuilding?.floors ?? 1" /></label>
-              <label>房间<input v-model="editRoom" maxlength="64" required /></label>
+          <section class="map3d-floor-browser" aria-label="楼层选择">
+            <div class="map3d-section-title">
+              <strong>选择楼层</strong>
+              <small>地图立面和按钮可联动</small>
             </div>
-            <div class="map3d-form__row">
-              <label>楼内 X<input v-model.number="editX" type="number" min="0" :max="Number(selectedBuilding?.width ?? 0)" step="0.1" /></label>
-              <label>楼内 Z<input v-model.number="editZ" type="number" min="0" :max="Number(selectedBuilding?.depth ?? 0)" step="0.1" /></label>
+            <div class="map3d-floor-grid">
+              <button
+                v-for="floor in inspectedFloorSummaries"
+                :key="floor.floorNo"
+                type="button"
+                class="map3d-floor-button"
+                :class="[
+                  'map3d-floor-button--' + floor.status.toLowerCase(),
+                  { active: inspectedFloorNo === floor.floorNo },
+                ]"
+                :aria-pressed="inspectedFloorNo === floor.floorNo"
+                :title="floor.devices.length + ' 台设备 · ' + statusLabel(floor.status)"
+                @click="inspectFloor(inspectedBuilding.buildingCode, floor.floorNo)"
+              >
+                <i></i>{{ floor.floorNo }}层
+              </button>
             </div>
-            <button class="btn-primary" type="submit" :disabled="saving">{{ saving ? '保存中…' : '保存地图位置' }}</button>
-          </form>
+          </section>
+
+          <section class="map3d-camera">
+            <div class="map3d-section-title">
+              <strong>过道监控画面</strong>
+              <small>{{ selectedCamera?.code }}</small>
+            </div>
+            <div class="map3d-camera-tabs" aria-label="模拟摄像头">
+              <button
+                v-for="camera in cameraFeeds"
+                :key="camera.key"
+                type="button"
+                :aria-pressed="selectedCameraKey === camera.key"
+                :class="{ active: selectedCameraKey === camera.key }"
+                @click="selectCamera(camera.key)"
+              >
+                {{ camera.label }}
+              </button>
+            </div>
+            <figure
+              v-if="selectedCamera"
+              class="map3d-camera-frame"
+              :class="{ 'map3d-camera-frame--warning': selectedCamera.key === 'warning' }"
+            >
+              <img
+                :src="selectedCamera.image"
+                :alt="formatBuildingName(inspectedBuilding) + '第' + formatChineseNumber(inspectedFloorNo) + '层' + selectedCamera.label + '模拟画面'"
+                decoding="async"
+              />
+              <div class="map3d-camera-frame__top">
+                <span><i></i>模拟画面</span>
+                <time>{{ cameraTimestamp }}</time>
+              </div>
+              <div v-if="selectedCamera.key === 'warning'" class="map3d-ai-detection">
+                <span>AI 识别演示</span>
+                <b>疑似烟雾区域</b>
+              </div>
+              <figcaption>
+                <span>{{ formatBuildingName(inspectedBuilding) }} · {{ inspectedFloorNo }}层 · {{ selectedCamera.label }}</span>
+                <span>{{ floorDevices.length }} 台感知设备</span>
+              </figcaption>
+            </figure>
+            <p class="map3d-camera-note">画面由 AI 生成，仅用于交互演示，当前尚未接入真实摄像头视频流。</p>
+          </section>
+
+          <section class="map3d-floor-devices">
+            <div class="map3d-section-title">
+              <strong>本层设备</strong>
+              <small>{{ floorDevices.length }} 台</small>
+            </div>
+            <div v-if="floorDevices.length" class="map3d-floor-device-list">
+              <button
+                v-for="device in floorDevices"
+                :key="device.id"
+                type="button"
+                :class="{ active: selectedDeviceId === device.id }"
+                @click="chooseDevice(device)"
+              >
+                <i :class="'map3d-floor-device-dot--' + device.status.toLowerCase()"></i>
+                <span>
+                  <strong>{{ device.deviceName || device.deviceId }}</strong>
+                  <small>{{ device.roomLabel || '未设置房间' }}</small>
+                </span>
+                <em>{{ statusLabel(device.status) }}</em>
+              </button>
+            </div>
+            <div v-else class="map3d-floor-empty">本层暂无烟感设备，可继续查看演示监控画面。</div>
+          </section>
+
+          <section v-if="selectedFloorDevice" class="map3d-inspector">
+            <div class="map3d-inspector__head">
+              <div>
+                <small>设备空间详情</small>
+                <h4>{{ selectedFloorDevice.deviceName || selectedFloorDevice.deviceId }}</h4>
+              </div>
+              <span class="map3d-state" :class="'map3d-state--' + selectedFloorDevice.status.toLowerCase()">
+                {{ statusLabel(selectedFloorDevice.status) }}
+              </span>
+            </div>
+            <dl class="map3d-location">
+              <div><dt>设备编号</dt><dd>{{ selectedFloorDevice.deviceId }}</dd></div>
+              <div><dt>空间位置</dt><dd>{{ selectedFloorDevice.buildingName }} 第{{ formatChineseNumber(selectedFloorDevice.floorNo ?? 0) }}层 {{ selectedFloorDevice.roomLabel }}</dd></div>
+              <div><dt>安装说明</dt><dd>{{ selectedFloorDevice.location || '—' }}</dd></div>
+              <div><dt>最新数据</dt><dd>{{ fmtFull(selectedFloorDevice.latestTimestamp) }}</dd></div>
+            </dl>
+            <div class="map3d-metrics">
+              <span><b>{{ conc(selectedFloorDevice.smoke) }}</b> ppm<small>烟雾</small></span>
+              <span><b>{{ conc(selectedFloorDevice.temperature) }}</b> ℃<small>温度</small></span>
+              <span><b>{{ conc(selectedFloorDevice.coValue) }}</b> ppm<small>CO</small></span>
+              <span><b>{{ selectedFloorDevice.battery ?? '—' }}</b> %<small>电量</small></span>
+            </div>
+
+            <form v-if="store.canManageMapPositions" class="map3d-form" @submit.prevent="savePosition">
+              <h4>调整数据库位置</h4>
+              <label>楼栋
+                <select v-model="editBuilding">
+                  <option v-for="building in scene?.buildings" :key="building.buildingCode" :value="building.buildingCode">
+                    {{ building.buildingName }}
+                  </option>
+                </select>
+              </label>
+              <div class="map3d-form__row">
+                <label>楼层<input v-model.number="editFloor" type="number" min="1" :max="editSelectedBuilding?.floors ?? 1" /></label>
+                <label>房间<input v-model="editRoom" maxlength="64" required /></label>
+              </div>
+              <div class="map3d-form__row">
+                <label>楼内 X<input v-model.number="editX" type="number" min="0" :max="Number(editSelectedBuilding?.width ?? 0)" step="0.1" /></label>
+                <label>楼内 Z<input v-model.number="editZ" type="number" min="0" :max="Number(editSelectedBuilding?.depth ?? 0)" step="0.1" /></label>
+              </div>
+              <button class="btn-primary" type="submit" :disabled="saving">{{ saving ? '保存中…' : '保存地图位置' }}</button>
+            </form>
+          </section>
         </template>
-        <div v-else class="map3d-empty">暂无可定位设备</div>
+        <div v-else class="map3d-empty">暂无可浏览的楼栋</div>
       </aside>
     </div>
   </section>
