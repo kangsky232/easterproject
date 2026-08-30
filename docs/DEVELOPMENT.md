@@ -7,7 +7,7 @@
 | 组件 | 默认端口 | 本地核心联调是否必需 | 说明 |
 | --- | ---: | --- | --- |
 | MySQL 8 | `3306` | 是 | 保存用户、设备、告警和监测数据 |
-| Spring Boot 后端 | `8080` | 是 | API、认证和独立用户管理页 |
+| Spring Boot 后端 | `8080` | 是 | API、认证和备用独立用户管理页 |
 | Vue/Vite 前端 | `5173` | 是 | 端口占用时 Vite 会自动选择下一个端口 |
 | RAG 服务 | `5001` | 否 | 不可用时后端使用内置安全规则降级 |
 | MQTT Broker/华为云 IoTDA | 由平台决定 | 否 | 后端已支持 MQTT 入站遥测；HTTP 联调不依赖它 |
@@ -56,7 +56,7 @@ mvn spring-boot:run
 Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8080/api/health
 ```
 
-开发环境 Swagger：`http://127.0.0.1:8080/swagger-ui.html`；独立用户管理页：`http://127.0.0.1:8080/admin/index.html`。
+开发环境 Swagger：`http://127.0.0.1:8080/swagger-ui.html`。用户管理已集成到主前端的系统管理员工作区；备用独立页面为 `http://127.0.0.1:8080/admin/index.html`。
 
 ## 3. 启动前端
 

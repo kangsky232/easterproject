@@ -273,7 +273,7 @@ Authorization: Bearer <token>
 
 ## 用户管理 API
 
-以下接口只对 `SYSTEM_ADMIN` 开放。主监控前端目前不包含用户管理页，可使用独立后端管理页 `/admin/index.html` 或由后续管理端调用。
+以下接口只对 `SYSTEM_ADMIN` 开放。主监控前端的“用户管理”模块复用当前 JWT，支持列表筛选、创建、编辑、启停、重置密码和删除；独立后端页面 `/admin/index.html` 仅作为备用入口。
 
 | 方法 | 路径 | 请求体 |
 | --- | --- | --- |

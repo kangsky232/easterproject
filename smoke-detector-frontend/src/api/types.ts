@@ -113,6 +113,16 @@ export interface User {
   [key: string]: unknown
 }
 
+export interface UserAccount {
+  id: number
+  username: string
+  displayName: string
+  role: 'RESIDENT' | 'COMMUNITY_ADMIN' | 'SYSTEM_ADMIN' | 'FIREFIGHTER'
+  enabled: boolean
+  phone?: string | null
+  createdAt?: string | null
+}
+
 export interface LoginResponse {
   token: string
   user: User

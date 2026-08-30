@@ -17,6 +17,7 @@ import type {
   RoleWorkspace,
   SystemCapabilities,
   TrendPointRaw,
+  UserAccount,
 } from './types'
 
 export function checkHealth(): Promise<unknown> {
@@ -119,6 +120,57 @@ export interface BroadcastPayload {
 
 export function createBroadcast(payload: BroadcastPayload): Promise<BroadcastRaw> {
   return api('/api/broadcasts', { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export interface UserQuery {
+  keyword?: string
+  role?: string
+  enabled?: '' | '0' | '1'
+}
+
+export interface UserPayload {
+  displayName: string
+  role: UserAccount['role']
+  phone: string
+}
+
+export interface CreateUserPayload extends UserPayload {
+  username: string
+  password: string
+}
+
+export function fetchUsers(query: UserQuery = {}): Promise<PageResult<UserAccount>> {
+  const params = new URLSearchParams({ page: '1', pageSize: '200' })
+  if (query.keyword?.trim()) params.set('keyword', query.keyword.trim())
+  if (query.role) params.set('role', query.role)
+  if (query.enabled) params.set('enabled', query.enabled)
+  return api(`/api/users?${params}`)
+}
+
+export function createUser(payload: CreateUserPayload): Promise<UserAccount> {
+  return api('/api/users', { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export function updateUser(id: number, payload: UserPayload): Promise<UserAccount> {
+  return api(`/api/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+}
+
+export function updateUserStatus(id: number, enabled: boolean): Promise<UserAccount> {
+  return api(`/api/users/${id}/status`, {
+    method: 'PUT',
+    body: JSON.stringify({ enabled: enabled ? 1 : 0 }),
+  })
+}
+
+export function resetUserPassword(id: number, password: string): Promise<unknown> {
+  return api(`/api/users/${id}/password`, {
+    method: 'PUT',
+    body: JSON.stringify({ password }),
+  })
+}
+
+export function deleteUser(id: number): Promise<unknown> {
+  return api(`/api/users/${id}`, { method: 'DELETE' })
 }
 
 export function deliverBroadcast(id: number): Promise<BroadcastRaw> {
