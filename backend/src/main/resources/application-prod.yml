@@ -31,7 +31,7 @@ bootstrap-admin:
 
 smoke:
   offline-timeout-seconds: ${OFFLINE_TIMEOUT_SECONDS:60}
-  offline-check-interval-ms: ${OFFLINE_CHECK_INTERVAL_MS:30000}
+  offline-check-interval-ms: ${OFFLINE_CHECK_INTERVAL_MS:3000}
 
 rag:
   service-url: ${RAG_SERVICE_URL}

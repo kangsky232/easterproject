@@ -99,8 +99,8 @@ function render(): void {
       },
       xAxis: {
         type: 'time',
-        interval: store.trendHours === 0 ? 10_000 : undefined,
-        minInterval: store.trendHours === 0 ? 10_000 : 60_000,
+        interval: store.trendHours === 0 ? 3_000 : undefined,
+        minInterval: store.trendHours === 0 ? 3_000 : 60_000,
         axisLabel: {
           color: theme.ink3,
           fontSize: 11,
@@ -214,7 +214,7 @@ watch(
       <div v-if="!device" class="hero-meta">选择设备查看</div>
       <div v-else class="hero-meta">
         {{ device.name || device.deviceCode }} · 阈值 {{ conc(device.threshold) }} ppm ·
-        <span :style="{ color: statusMeta.color }">{{ statusMeta.label }}</span> · 每10秒刷新
+        <span :style="{ color: statusMeta.color }">{{ statusMeta.label }}</span> · 每3秒刷新
       </div>
     </div>
 

@@ -22,7 +22,7 @@ public class OfflineDetectionService {
     @Value("${smoke.offline-timeout-seconds:60}")
     private long offlineTimeoutSeconds;
 
-    @Scheduled(fixedDelayString = "${smoke.offline-check-interval-ms:30000}")
+    @Scheduled(fixedDelayString = "${smoke.offline-check-interval-ms:3000}")
     @Transactional
     public void detectOfflineDevices() {
         LocalDateTime cutoff = LocalDateTime.now().minusSeconds(offlineTimeoutSeconds);

@@ -72,7 +72,7 @@ export const TOKEN_KEY = 'smart-smoke.token'
 export const USER_KEY = 'smart-smoke.user'
 
 export const MAX_CHART_POINTS = 120
-export const REFRESH_MS = 10_000
+export const REFRESH_MS = 3_000
 export const MAX_REFRESH_MS = 60_000
 
 // 趋势图可选指标：与烟雾浓度共用同一数据通道（history / trend）。

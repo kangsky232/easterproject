@@ -93,7 +93,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   })
 
   const selectedId = ref<number | null>(null)
-  // 0 表示实时模式：展示最近 120 条原始数据，并随全局轮询每 10 秒刷新。
+  // 0 表示实时模式：展示最近 120 条原始数据，并随全局轮询每 3 秒刷新。
   const trendHours = ref(0)
   const chartTimes = ref<string[]>([])
   const chartSeries = ref<Record<MetricKey, (number | null)[]>>(emptySeries())
