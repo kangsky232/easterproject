@@ -1,4 +1,11 @@
-import type { AlarmSeverity, AlarmStatus, AlarmType, DeviceStatus } from '@/constants'
+import type {
+  AlarmSeverity,
+  AlarmStatus,
+  AlarmType,
+  DeviceStatus,
+  ModuleKey,
+  PermissionCode,
+} from '@/constants'
 
 // ---------- 后端原始响应（camelCase） ----------
 
@@ -133,8 +140,8 @@ export interface RoleWorkspace {
   roleLabel: string
   homeTitle: string
   description: string
-  modules: string[]
-  permissions: string[]
+  modules: ModuleKey[]
+  permissions: PermissionCode[]
 }
 
 export interface MapBuilding {

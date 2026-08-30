@@ -345,7 +345,6 @@ watch(selectedDevice, (device) => {
             </div>
             <button class="btn-primary" type="submit" :disabled="saving">{{ saving ? '保存中…' : '保存地图位置' }}</button>
           </form>
-          <p v-else class="map3d-readonly">当前账号为只读地图权限，只有小区管理员和系统管理员可调整位置。</p>
         </template>
         <div v-else class="map3d-empty">暂无可定位设备</div>
       </aside>

@@ -1,6 +1,15 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { ALARM_TYPE, ALARM_UNIT, TOKEN_KEY, USER_KEY, type MetricKey } from '@/constants'
+import {
+  ALARM_TYPE,
+  ALARM_UNIT,
+  SAFE_MODULES,
+  TOKEN_KEY,
+  USER_KEY,
+  type MetricKey,
+  type ModuleKey,
+  type PermissionCode,
+} from '@/constants'
 import { theme } from '@/theme'
 import type {
   Alarm,
@@ -130,23 +139,15 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const pendingCount = computed(() => alarms.value.filter((alarm) => alarm.status === 'pending').length)
   const activeAlertCount = computed(() => alarms.value.filter(isActiveAlarm).length)
   const userRole = computed(() => currentUser.value?.role ?? '')
-  const fallbackModules = computed(() => {
-    if (userRole.value === 'SYSTEM_ADMIN') return ['monitor', 'map', 'devices', 'chat', 'notifications', 'broadcasts', 'users']
-    if (userRole.value === 'COMMUNITY_ADMIN') return ['monitor', 'map', 'devices', 'chat', 'notifications', 'broadcasts']
-    if (userRole.value === 'FIREFIGHTER') return ['monitor', 'map', 'chat', 'notifications', 'broadcasts']
-    return ['monitor', 'map', 'chat']
+  const visibleModules = computed<ModuleKey[]>(() => {
+    if (!token.value) return []
+    return workspace.value?.modules ?? SAFE_MODULES
   })
-  const fallbackPermissions = computed(() => {
-    if (userRole.value === 'SYSTEM_ADMIN') return ['ALERT_HANDLE', 'BROADCAST_SEND', 'BROADCAST_DELETE', 'DEVICE_MANAGE', 'MAP_POSITION_MANAGE', 'USER_MANAGE']
-    if (userRole.value === 'COMMUNITY_ADMIN') return ['ALERT_HANDLE', 'BROADCAST_SEND', 'BROADCAST_DELETE', 'DEVICE_MANAGE', 'MAP_POSITION_MANAGE']
-    if (userRole.value === 'FIREFIGHTER') return ['ALERT_HANDLE', 'BROADCAST_SEND']
-    return ['READ_ONLY']
-  })
-  function canViewModule(module: string): boolean {
-    return (workspace.value?.modules ?? fallbackModules.value).includes(module)
+  function canViewModule(module: ModuleKey): boolean {
+    return visibleModules.value.includes(module)
   }
-  function hasPermission(permission: string): boolean {
-    return (workspace.value?.permissions ?? fallbackPermissions.value).includes(permission)
+  function hasPermission(permission: PermissionCode): boolean {
+    return (workspace.value?.permissions ?? ['READ_ONLY']).includes(permission)
   }
   const canHandleAlerts = computed(() => hasPermission('ALERT_HANDLE'))
   const canBroadcast = computed(() => hasPermission('BROADCAST_SEND'))
@@ -179,6 +180,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
   function handleUnauthorized(): void {
     setToken('')
     currentUser.value = null
+    workspace.value = null
+    notifications.value = []
+    broadcasts.value = []
     localStorage.removeItem(USER_KEY)
     needsLogin.value = true
     loginMessage.value = '登录已失效，请重新登录。'
@@ -193,6 +197,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
     loginMessage.value = '正在登录…'
     try {
       const data = await api.login(username, password)
+      workspace.value = null
+      notifications.value = []
+      broadcasts.value = []
       setToken(data.token)
       currentUser.value = data.user
       localStorage.setItem(USER_KEY, JSON.stringify(data.user))
@@ -237,8 +244,23 @@ export const useDashboardStore = defineStore('dashboard', () => {
     capabilities.value = await api.fetchCapabilities()
   }
 
+  async function fetchCurrentUser(): Promise<void> {
+    const nextUser = await api.fetchCurrentUser()
+    if (currentUser.value?.role && currentUser.value.role !== nextUser.role) {
+      workspace.value = null
+      notifications.value = []
+      broadcasts.value = []
+    }
+    currentUser.value = nextUser
+    localStorage.setItem(USER_KEY, JSON.stringify(nextUser))
+  }
+
   async function fetchWorkspace(): Promise<void> {
-    workspace.value = await api.fetchWorkspace()
+    const nextWorkspace = await api.fetchWorkspace()
+    if (currentUser.value?.role && nextWorkspace.roleCode !== currentUser.value.role) {
+      throw new Error('账号角色与工作区权限不一致')
+    }
+    workspace.value = nextWorkspace
   }
 
   async function fetchMapScene(): Promise<void> {
@@ -331,9 +353,14 @@ export const useDashboardStore = defineStore('dashboard', () => {
       return
     }
     try {
+      await fetchCurrentUser()
       await fetchWorkspace()
     } catch (error) {
-      console.warn('角色工作台加载失败：', (error as Error).message)
+      console.warn('账号权限加载失败：', (error as Error).message)
+    }
+    if (!token.value) {
+      loading.value = false
+      return
     }
     const results = await Promise.allSettled([
       fetchStats(),
@@ -739,6 +766,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     pendingCount,
     activeAlertCount,
     userRole,
+    visibleModules,
     canHandleAlerts,
     canBroadcast,
     canDeleteBroadcast,

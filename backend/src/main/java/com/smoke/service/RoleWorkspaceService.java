@@ -13,17 +13,17 @@ public class RoleWorkspaceService {
             case "SYSTEM_ADMIN" -> response(
                     roleCode, "系统管理员", "系统运行与安全治理",
                     "查看全局态势，管理设备、地图位置、广播、通知和系统账号。",
-                    List.of("monitor", "map", "devices", "chat", "notifications", "broadcasts", "users"),
+                    List.of("monitor", "map", "devices", "notifications", "broadcasts", "users", "chat"),
                     List.of("ALERT_HANDLE", "BROADCAST_SEND", "BROADCAST_DELETE", "DEVICE_MANAGE", "MAP_POSITION_MANAGE", "USER_MANAGE"));
             case "COMMUNITY_ADMIN" -> response(
                     roleCode, "小区管理员", "小区消防安全工作台",
                     "负责设备接入、社区态势监控、告警处置和日常安全广播。",
-                    List.of("monitor", "map", "devices", "chat", "notifications", "broadcasts"),
+                    List.of("monitor", "map", "devices", "notifications", "broadcasts", "chat"),
                     List.of("ALERT_HANDLE", "BROADCAST_SEND", "BROADCAST_DELETE", "DEVICE_MANAGE", "MAP_POSITION_MANAGE"));
             case "FIREFIGHTER" -> response(
                     roleCode, "消防员", "火情应急处置工作台",
                     "聚焦活动告警、3D 空间定位、通知追踪和应急广播，不开放设备与账号配置。",
-                    List.of("monitor", "map", "chat", "notifications", "broadcasts"),
+                    List.of("monitor", "map", "notifications", "broadcasts", "chat"),
                     List.of("ALERT_HANDLE", "BROADCAST_SEND"));
             default -> response(
                     "RESIDENT", "居民", "我的居住安全",

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { MAX_REFRESH_MS, REFRESH_MS } from '@/constants'
+import { MAX_REFRESH_MS, MODULE_LABELS, REFRESH_MS, type ModuleKey } from '@/constants'
 import { useDashboardStore } from '@/store/dashboard'
 import { resumeAudio } from '@/utils/audio'
 import TopBar from '@/components/TopBar.vue'
@@ -24,25 +24,15 @@ import UserAdminEntryView from '@/components/UserAdminEntryView.vue'
 
 const store = useDashboardStore()
 
-const tabs = computed(() => {
-  const role = store.userRole
-  const labels: Record<string, Record<string, string>> = {
-    RESIDENT: { monitor: '🏠 我的安全', map: '🏙️ 社区 3D', chat: '💬 安全问答' },
-    FIREFIGHTER: { monitor: '🚨 应急总览', map: '🏙️ 3D 态势', chat: '💬 智能辅助', notifications: '🔔 告警通知', broadcasts: '📣 应急广播' },
-    COMMUNITY_ADMIN: { monitor: '📊 小区监控', map: '🏙️ 3D 社区', devices: '🔧 设备管理', chat: '💬 智能问答', notifications: '🔔 通知记录', broadcasts: '📣 广播管理' },
-    SYSTEM_ADMIN: { monitor: '📊 系统总览', map: '🏙️ 3D 社区', devices: '🔧 设备管理', chat: '💬 智能问答', notifications: '🔔 通知审计', broadcasts: '📣 广播管理', users: '👥 用户管理' },
-  }
-  const fallback: Record<string, string> = { monitor: '📊 监控大屏', map: '🏙️ 模拟 3D 地图', devices: '🔧 设备管理', chat: '💬 智能问答', notifications: '🔔 通知记录', broadcasts: '📣 广播记录', users: '👥 用户管理' }
-  const order = ['monitor', 'map', 'devices', 'chat', 'notifications', 'broadcasts', 'users']
-  return order
-    .filter((key) => store.canViewModule(key))
-    .map((key) => ({ key, label: labels[role]?.[key] ?? fallback[key] }))
-})
+const tabs = computed(() =>
+  store.visibleModules.map((key) => ({ key, label: MODULE_LABELS[key] })),
+)
 
-const activeTab = ref('monitor')
+const activeTab = ref<ModuleKey>('monitor')
 const showBroadcast = ref(false)
 
-function switchTab(name: string): void {
+function switchTab(name: ModuleKey): void {
+  if (!store.canViewModule(name)) return
   activeTab.value = name
   if (name === 'devices' || name === 'notifications' || name === 'broadcasts') {
     void store.refreshAll()
@@ -92,7 +82,7 @@ onUnmounted(() => {
 <template>
   <TopBar @broadcast="openBroadcast" @simulate="onSimulate" @show-alarms="scrollToAlarms" />
 
-  <nav class="tabs" role="tablist" aria-label="功能导航">
+  <nav v-if="store.token" class="tabs" role="tablist" aria-label="功能导航">
     <button
       v-for="tab in tabs"
       :key="tab.key"
@@ -106,14 +96,14 @@ onUnmounted(() => {
     </button>
   </nav>
 
-  <AlertBar @show-alarms="scrollToAlarms" />
+  <AlertBar v-if="store.token" @show-alarms="scrollToAlarms" />
 
   <div v-if="!store.backendConnected && !store.loading" class="conn-banner" role="alert">
     <span>系统连接异常，正在自动重试…</span>
     <button class="btn-mini" type="button" @click="store.refreshAll()">立即重试</button>
   </div>
 
-  <div v-show="activeTab === 'monitor'">
+  <div v-if="store.canViewModule('monitor')" v-show="activeTab === 'monitor'">
     <template v-if="store.loading">
       <div class="kpi-row">
         <div v-for="i in 5" :key="i" class="skeleton skeleton-kpi"></div>
@@ -134,27 +124,27 @@ onUnmounted(() => {
     </template>
   </div>
 
-  <div v-show="activeTab === 'map'">
+  <div v-if="store.canViewModule('map')" v-show="activeTab === 'map'">
     <Map3DView />
   </div>
 
-  <div v-show="activeTab === 'devices'">
+  <div v-if="store.canViewModule('devices')" v-show="activeTab === 'devices'">
     <DeviceManageView />
   </div>
 
-  <div v-show="activeTab === 'chat'">
+  <div v-if="store.canViewModule('chat')" v-show="activeTab === 'chat'">
     <ChatView />
   </div>
 
-  <div v-show="activeTab === 'notifications'">
+  <div v-if="store.canViewModule('notifications')" v-show="activeTab === 'notifications'">
     <NotificationsView />
   </div>
 
-  <div v-show="activeTab === 'broadcasts'">
+  <div v-if="store.canViewModule('broadcasts')" v-show="activeTab === 'broadcasts'">
     <BroadcastsView />
   </div>
 
-  <div v-show="activeTab === 'users'">
+  <div v-if="store.canViewModule('users')" v-show="activeTab === 'users'">
     <UserAdminEntryView />
   </div>
 

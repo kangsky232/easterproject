@@ -62,6 +62,29 @@ export const ROLE_LABEL: Record<string, string> = {
   FIREFIGHTER: '消防员',
 }
 
+export const MODULE_LABELS = {
+  monitor: '📊 实时监控',
+  map: '🏙️ 3D 社区',
+  devices: '🔧 设备管理',
+  notifications: '🔔 通知记录',
+  broadcasts: '📣 广播管理',
+  users: '👥 用户管理',
+  chat: '💬 智能问答',
+} as const
+
+export type ModuleKey = keyof typeof MODULE_LABELS
+export type PermissionCode =
+  | 'READ_ONLY'
+  | 'ALERT_HANDLE'
+  | 'BROADCAST_SEND'
+  | 'BROADCAST_DELETE'
+  | 'DEVICE_MANAGE'
+  | 'MAP_POSITION_MANAGE'
+  | 'USER_MANAGE'
+
+// 工作区尚未从后端加载成功时，只开放所有已登录角色都具备的只读页面。
+export const SAFE_MODULES: ModuleKey[] = ['monitor', 'map', 'chat']
+
 export const BROADCAST_STATUS: Record<number, string> = {
   0: '待下发',
   1: '已完成',

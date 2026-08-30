@@ -17,6 +17,7 @@ import type {
   RoleWorkspace,
   SystemCapabilities,
   TrendPointRaw,
+  User,
   UserAccount,
 } from './types'
 
@@ -30,6 +31,10 @@ export function fetchCapabilities(): Promise<SystemCapabilities> {
 
 export function fetchWorkspace(): Promise<RoleWorkspace> {
   return api('/api/auth/workspace')
+}
+
+export function fetchCurrentUser(): Promise<User> {
+  return api('/api/auth/me')
 }
 
 export function fetchMapScene(): Promise<MapScene> {
