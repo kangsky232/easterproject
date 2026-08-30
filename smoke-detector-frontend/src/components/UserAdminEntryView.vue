@@ -197,7 +197,6 @@ onMounted(() => {
     <template v-if="store.canManageUsers">
       <div class="section-head user-admin__head">
         <div>
-          <p class="role-workspace__eyebrow">系统管理员权限</p>
           <h2>账号与角色管理</h2>
           <p>直接使用当前登录状态管理居民、社区管理员、系统管理员和消防人员账号。</p>
         </div>

@@ -788,25 +788,8 @@ body {
   body { padding: 28px 44px 32px; }
 }
 
-/* ---------- 角色工作台 ---------- */
-.role-workspace {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 16px;
-  padding: 18px 22px;
-  border: 1px solid rgba(57, 135, 229, 0.28);
-  border-radius: var(--radius);
-  background: linear-gradient(120deg, rgba(57, 135, 229, 0.13), rgba(13, 13, 13, 0.88));
-}
-.role-workspace--firefighter { border-color: rgba(208, 59, 59, 0.36); background: linear-gradient(120deg, rgba(208, 59, 59, 0.13), rgba(13, 13, 13, 0.88)); }
-.role-workspace--resident { border-color: rgba(12, 163, 12, 0.28); background: linear-gradient(120deg, rgba(12, 163, 12, 0.11), rgba(13, 13, 13, 0.88)); }
+/* ---------- 小标题 ---------- */
 .role-workspace__eyebrow { display: block; margin-bottom: 5px; color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
-.role-workspace h2 { margin: 0 0 6px; font-size: 20px; }
-.role-workspace p { margin: 0; color: var(--ink-2); font-size: 13px; line-height: 1.55; }
-.role-workspace__permissions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 7px; max-width: 45%; }
-.role-workspace__permissions span { padding: 5px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--ink-2); background: rgba(0,0,0,.2); font-size: 11px; }
 
 /* ---------- 模拟 3D 地图 ---------- */
 .map3d-view { width: 100%; min-width: 0; margin-top: 4px; }
@@ -929,8 +912,7 @@ body {
   .user-admin__filters { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 720px) {
-  .role-workspace, .map3d-head { align-items: flex-start; flex-direction: column; }
-  .role-workspace__permissions { max-width: none; justify-content: flex-start; }
+  .map3d-head { align-items: flex-start; flex-direction: column; }
   .map3d-canvas { min-height: 500px; }
   .map3d-canvas svg { height: 500px; }
   .map3d-tools span { display: none; }

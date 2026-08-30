@@ -20,7 +20,6 @@ import TokenModal from '@/components/TokenModal.vue'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import LoginModal from '@/components/LoginModal.vue'
 import Map3DView from '@/components/Map3DView.vue'
-import RoleWorkspaceBanner from '@/components/RoleWorkspaceBanner.vue'
 import UserAdminEntryView from '@/components/UserAdminEntryView.vue'
 
 const store = useDashboardStore()
@@ -115,7 +114,6 @@ onUnmounted(() => {
   </div>
 
   <div v-show="activeTab === 'monitor'">
-    <RoleWorkspaceBanner />
     <template v-if="store.loading">
       <div class="kpi-row">
         <div v-for="i in 5" :key="i" class="skeleton skeleton-kpi"></div>
