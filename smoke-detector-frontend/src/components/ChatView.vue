@@ -94,7 +94,6 @@ function onVoiceResult(text: string): void {
 const { listening, toggle } = useSpeech(onVoiceResult, (message) => addMessage('bot', message))
 
 watch(open, (visible) => {
-  document.body.classList.toggle('chat-assistant-open', visible)
   if (visible) {
     scrollToBottom()
     focusInput()
@@ -104,7 +103,6 @@ watch(open, (visible) => {
 onMounted(() => document.addEventListener('keydown', onKeydown))
 onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown)
-  document.body.classList.remove('chat-assistant-open')
 })
 
 addMessage('bot', '你好，我是智能问答助手。可以问我告警处置、疏散、设备离线和阈值设置等问题。')
@@ -139,7 +137,7 @@ addMessage('bot', '你好，我是智能问答助手。可以问我告警处置�
         key="dialog"
         class="chat-assistant-overlay"
         role="dialog"
-        aria-modal="true"
+        aria-modal="false"
         aria-labelledby="chat-assistant-title"
       >
         <header class="chat-assistant-header">
