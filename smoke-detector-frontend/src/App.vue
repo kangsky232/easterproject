@@ -151,10 +151,6 @@ onUnmounted(() => {
     <DeviceManageView />
   </div>
 
-  <div v-if="store.canViewModule('chat')" v-show="activeTab === 'chat'">
-    <ChatView />
-  </div>
-
   <div v-if="store.canViewModule('notifications')" v-show="activeTab === 'notifications'">
     <NotificationsView />
   </div>
@@ -173,4 +169,5 @@ onUnmounted(() => {
   <TokenModal />
   <ConfirmModal />
   <LoginModal />
+  <ChatView v-if="store.token && store.canViewModule('chat')" />
 </template>

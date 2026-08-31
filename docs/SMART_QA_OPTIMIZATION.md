@@ -9,7 +9,7 @@
 请求链路：
 
 ```text
-Vue 问答界面
+Vue 全局悬浮挂件 / 全屏问答界面
   -> Spring Boot /api/chat
   -> Flask rag-service
   -> 领域判断与知识检索

@@ -75,7 +75,7 @@ export const MODULE_LABELS = {
 export type ModuleKey = keyof typeof MODULE_LABELS
 
 export interface ModuleGroup {
-  key: 'monitoring' | 'response' | 'resources' | 'intelligence'
+  key: 'monitoring' | 'response' | 'resources'
   label: string
   modules: readonly ModuleKey[]
 }
@@ -84,7 +84,6 @@ export const MODULE_GROUPS: readonly ModuleGroup[] = [
   { key: 'monitoring', label: '监控中心', modules: ['monitor', 'map'] },
   { key: 'response', label: '事件处置', modules: ['notifications', 'broadcasts'] },
   { key: 'resources', label: '资源管理', modules: ['devices', 'users'] },
-  { key: 'intelligence', label: '智能辅助', modules: ['chat'] },
 ]
 
 export type PermissionCode =
