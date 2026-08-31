@@ -4,6 +4,7 @@ import { useDashboardStore } from '@/store/dashboard'
 import { ROLE_LABEL } from '@/constants'
 import { useClock } from '@/composables/useClock'
 import AppIcon from '@/components/AppIcon.vue'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 
 const store = useDashboardStore()
 const now = useClock()
@@ -12,6 +13,7 @@ const emit = defineEmits<{
   (e: 'broadcast'): void
   (e: 'simulate'): void
   (e: 'show-alarms'): void
+  (e: 'home'): void
 }>()
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -27,13 +29,13 @@ const roleLabel = computed(() => ROLE_LABEL[store.currentUser?.role ?? ''] ?? ''
 
 <template>
   <header class="topbar">
-    <div class="brand">
+    <button type="button" class="brand brand--clickable" aria-label="返回首页" @click="emit('home')">
       <span class="logo" aria-hidden="true"><AppIcon name="flame" :size="30" /></span>
       <div class="brand-text">
         <h1>智慧烟感预警系统</h1>
         <p class="subtitle">Smart Smoke Detector · 实时监控大屏</p>
       </div>
-    </div>
+    </button>
 
     <div class="topbar-right">
       <button
@@ -76,6 +78,7 @@ const roleLabel = computed(() => ROLE_LABEL[store.currentUser?.role ?? ''] ?? ''
         <span>{{ store.backendConnected ? '系统在线 · 实时更新' : '系统连接异常' }}</span>
       </div>
       <div class="clock">{{ clockText }}</div>
+      <ThemeToggle />
     </div>
   </header>
 </template>

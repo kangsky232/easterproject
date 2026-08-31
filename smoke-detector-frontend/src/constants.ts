@@ -95,7 +95,7 @@ export type PermissionCode =
   | 'MAP_POSITION_MANAGE'
   | 'USER_MANAGE'
 
-// 工作区尚未从后端加载成功时，只开放所有已登录角色都具备的只读页面。
+// 未登录或工作区尚未从后端加载成功时，只开放所有角色都具备的基础只读页面。
 export const SAFE_MODULES: ModuleKey[] = ['monitor', 'map', 'chat']
 
 export const BROADCAST_STATUS: Record<number, string> = {

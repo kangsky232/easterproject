@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import * as echarts from 'echarts'
 import { CHART_METRICS, DEVICE_STATUS, type MetricKey } from '@/constants'
-import { theme } from '@/theme'
+import { theme, chartTheme, isDark } from '@/theme'
 import { useDashboardStore } from '@/store/dashboard'
 import { useCountUp } from '@/composables/useCountUp'
 import { conc } from '@/utils/format'
@@ -84,10 +84,10 @@ function render(): void {
       grid: { left: 52, right: 18, top: 24, bottom: 52 },
       tooltip: {
         trigger: 'axis',
-        backgroundColor: theme.surface,
-        borderColor: theme.border,
-        textStyle: { color: theme.ink1, fontSize: 12 },
-        axisPointer: { type: 'line', lineStyle: { color: theme.ink3, width: 1 } },
+        backgroundColor: chartTheme.surface,
+        borderColor: chartTheme.border,
+        textStyle: { color: chartTheme.text, fontSize: 12 },
+        axisPointer: { type: 'line', lineStyle: { color: chartTheme.axis, width: 1 } },
         formatter: (params: unknown) => {
           const p = (params as any[])[0]
           if (!p) return ''
@@ -104,7 +104,7 @@ function render(): void {
         interval: store.trendHours === 0 ? 3_000 : undefined,
         minInterval: store.trendHours === 0 ? 3_000 : 60_000,
         axisLabel: {
-          color: theme.ink3,
+          color: chartTheme.axis,
           fontSize: 11,
           hideOverlap: true,
           formatter: (value: number) => {
@@ -115,19 +115,19 @@ function render(): void {
               : minute
           },
         },
-        axisLine: { lineStyle: { color: theme.baseline } },
+        axisLine: { lineStyle: { color: chartTheme.axis } },
         axisTick: { show: false },
         splitLine: {
           show: true,
-          lineStyle: { color: theme.grid },
+          lineStyle: { color: chartTheme.grid },
         },
       },
       yAxis: {
         type: 'value',
         name: meta.unit ?? '',
-        nameTextStyle: { color: theme.ink3 },
-        splitLine: { lineStyle: { color: theme.grid } },
-        axisLabel: { color: theme.ink3, fontSize: 11 },
+        nameTextStyle: { color: chartTheme.axis },
+        splitLine: { lineStyle: { color: chartTheme.grid } },
+        axisLabel: { color: chartTheme.axis, fontSize: 11 },
       },
       dataZoom: [
         { type: 'inside', throttle: 50 },
@@ -137,10 +137,10 @@ function render(): void {
           bottom: 6,
           borderColor: 'transparent',
           backgroundColor: 'rgba(255,255,255,0.04)',
-          fillerColor: 'rgba(57,135,229,0.15)',
-          handleStyle: { color: theme.accent },
-          moveHandleStyle: { color: theme.accent },
-          textStyle: { color: theme.ink3, fontSize: 10 },
+          fillerColor: chartTheme.sliderFiller,
+          handleStyle: { color: chartTheme.line },
+          moveHandleStyle: { color: chartTheme.line },
+          textStyle: { color: chartTheme.axis, fontSize: 10 },
         },
       ],
       series: [
@@ -150,14 +150,14 @@ function render(): void {
           data: data,
           showSymbol: false,
           smooth: false,
-          lineStyle: { width: 2, color: theme.accent },
-          areaStyle: { color: 'rgba(57,135,229,0.10)' },
+          lineStyle: { width: 2, color: chartTheme.line },
+          areaStyle: { color: chartTheme.area },
           markLine: showThreshold
             ? {
                 silent: true,
                 symbol: 'none',
                 lineStyle: { color: theme.critical, type: 'dashed', width: 1 },
-                label: { color: theme.ink2, fontSize: 11, formatter: `阈值 ${conc(threshold)}` },
+                label: { color: chartTheme.text, fontSize: 11, formatter: `阈值 ${conc(threshold)}` },
                 data: [{ yAxis: threshold }],
               }
             : undefined,
@@ -185,7 +185,7 @@ onUnmounted(() => {
 })
 
 watch(
-  [() => store.chartTimes, () => store.chartSeries, () => store.selectedMetric, () => store.selectedThreshold],
+  [() => store.chartTimes, () => store.chartSeries, () => store.selectedMetric, () => store.selectedThreshold, () => isDark.value],
   () => render(),
 )
 </script>

@@ -141,7 +141,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const activeAlertCount = computed(() => alarms.value.filter(isActiveAlarm).length)
   const userRole = computed(() => currentUser.value?.role ?? '')
   const visibleModules = computed<ModuleKey[]>(() => {
-    if (!token.value) return []
+    // 未登录或工作区尚未加载时，回退到所有角色共有的基础只读页面，
+    // 保证首页导航始终可见（与参考实现一致），登录后再按后端工作区精确收敛。
     return workspace.value?.modules ?? SAFE_MODULES
   })
   function canViewModule(module: ModuleKey): boolean {

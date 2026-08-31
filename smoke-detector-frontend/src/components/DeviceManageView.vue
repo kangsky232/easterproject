@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { DEVICE_STATUS } from '@/constants'
-import { theme } from '@/theme'
 import type { Device } from '@/api/types'
 import { useDashboardStore } from '@/store/dashboard'
 import { conc } from '@/utils/format'
@@ -41,11 +40,11 @@ function beepLabel(status: string | null): string {
 // 当前浓度相对阈值着色：接近/超过阈值时提示风险。
 function concColor(device: Device): string {
   const value = device.latestConcentration
-  if (value == null) return theme.ink3
+  if (value == null) return 'var(--ink-3)'
   const threshold = device.threshold || 100
-  if (value >= threshold) return theme.critical
-  if (value >= threshold * 0.8) return theme.warning
-  return theme.ink1
+  if (value >= threshold) return 'var(--critical)'
+  if (value >= threshold * 0.8) return 'var(--warning)'
+  return 'var(--ink-1)'
 }
 </script>
 
