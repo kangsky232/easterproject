@@ -86,8 +86,8 @@ Authorization: Bearer <token>
 | 角色 | 说明 | 前端可提供的主要操作 |
 | --- | --- | --- |
 | `RESIDENT` | 居民 | 欢迎首页、实时监控、3D 社区、隐患上报；右下角智能问答，可上报并跟踪本人隐患，其余业务只读 |
-| `FIREFIGHTER` | 消防人员 | 欢迎首页、实时监控、3D 社区、隐患整改、通知记录、广播管理；右下角智能问答，可处置告警、接单整改和下发广播 |
-| `COMMUNITY_ADMIN` | 社区管理员 | 欢迎首页、实时监控、3D 社区、设备管理、隐患闭环、通知记录、广播管理；右下角智能问答，可管理设备/地图并处理和复核隐患 |
+| `FIREFIGHTER` | 消防人员 | 欢迎首页、实时监控、3D 社区、隐患整改、通知审计、广播管理；右下角智能问答，可处置告警、接单整改、核查通知和下发广播 |
+| `COMMUNITY_ADMIN` | 社区管理员 | 欢迎首页、实时监控、3D 社区、设备管理、隐患闭环、通知审计、广播管理；右下角智能问答，可管理设备/地图、处理和复核隐患及核查通知 |
 | `SYSTEM_ADMIN` | 系统管理员 | 社区管理员全部页面 + 用户管理；右下角智能问答，拥有全部业务管理操作 |
 
 登录后前端先显示欢迎首页，调用 `/api/auth/me` 同步数据库中的最新角色，再使用 `/api/auth/workspace` 返回的可见模块过滤本地定义顺序中的平铺导航和功能页签。智能问答不占用导航板块，而是以右下角全局挂件呈现，拥有 `chat` 模块权限的账号点击后打开非模态白色小窗口。无权模块不提供导航入口，相关操作按钮按权限隐藏；功能区中的部分 Vue 组件使用 `v-show`，可能已经挂载，因此不能把前端隐藏当作权限边界。工作区加载失败时仅保留实时监控、3D 社区和智能问答挂件三个安全只读入口，不继承上一账号的管理权限。后端仍会强制校验，收到 `403` 时应显示“没有操作权限”。居民不能读取通知与广播记录；开发态“模拟告警”仅向社区管理员和系统管理员显示，生产模式隐藏。
@@ -206,18 +206,20 @@ Authorization: Bearer <token>
 
 ## 通知中心
 
-通知记录接口面向前端列表、筛选、详情和统计卡片。APP 表示通知中心本地记录，状态为 `SENT`；SMS 尚未接入供应商，只生成 `PENDING` 占位记录；DINGTALK 表示钉钉真实投递结果。
+通知记录接口面向前端列表、筛选、详情、统计卡片和人工核查闭环。APP 表示通知中心本地记录，状态为 `SENT`；SMS 尚未接入供应商，只生成 `PENDING` 占位记录；DINGTALK 表示钉钉真实投递结果。
 
 | 方法 | 路径 | 角色 | 说明 |
 | --- | --- | --- | --- |
-| GET | `/api/notifications?page=1&pageSize=50&alertId=&deviceId=&channel=&status=` | 消防人员及以上 | 分页筛选通知 |
+| GET | `/api/notifications?page=1&pageSize=50&alertId=&deviceId=&channel=&status=&auditStatus=` | 消防人员及以上 | 分页筛选通知 |
 | GET | `/api/notifications/{id}` | 消防人员及以上 | 通知详情 |
-| GET | `/api/notifications/summary` | 消防人员及以上 | 所有通知的通道与状态汇总 |
+| GET | `/api/notifications/summary` | 消防人员及以上 | 通道、投递、核查及异常待办汇总 |
+| POST | `/api/notifications/{id}/audit` | 消防人员及以上 | 提交一次性核查结论并记录操作人 |
 
 筛选值：
 
 - `channel`：`APP`、`SMS`、`DINGTALK`
 - `status`：`PENDING`、`SENT`、`FAILED`
+- `auditStatus`：`PENDING`、`COMPLETED`
 
 筛选值忽略首尾空格和大小写。前端展示状态时：`PENDING` 使用“待发送”，`SENT` 使用“已送达”，`FAILED` 使用“失败”；SMS 为 `PENDING` 时不得提示用户“短信已发送”。
 
@@ -233,15 +235,30 @@ Authorization: Bearer <token>
   "content": "设备 SMOKE-001 触发烟雾超阈值告警，请及时处理。",
   "status": "PENDING",
   "sentAt": null,
+  "auditStatus": "PENDING",
+  "auditResult": null,
+  "auditorUsername": null,
+  "auditRemark": null,
+  "auditedAt": null,
   "createdAt": "2026-08-24T14:30:00"
 }
 ```
 
+核查请求：
+
+```json
+{"result":"FOLLOWED_UP","remark":"已核对接收配置并通知值班人员处理"}
+```
+
+`result` 仅支持 `NORMAL`（核查正常）和 `FOLLOWED_UP`（已跟进处理），`remark` 必填且最多 500 字。后端从 JWT 写入 `auditorUsername` 和 `auditedAt`；已完成核查时再次提交返回 `409`，前端应刷新详情，不能覆盖原结论。核查完成仅代表工作人员已检查投递日志，不代表短信或钉钉接收人已读。
+
 摘要 `data`：
 
 ```json
-{"total":20,"appCount":9,"smsCount":9,"dingTalkCount":2,"pendingCount":9,"sentCount":11,"failedCount":0}
+{"total":20,"appCount":9,"smsCount":9,"dingTalkCount":2,"pendingCount":9,"sentCount":10,"failedCount":1,"pendingAuditCount":4,"completedAuditCount":16,"attentionCount":1}
 ```
+
+`attentionCount` 只统计“投递失败且尚未核查”的记录。当前主前端一次加载最近 200 条供本地组合筛选和 CSV 导出；顶部摘要始终统计数据库中的全部记录。
 
 ## 广播
 

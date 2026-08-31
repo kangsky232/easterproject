@@ -7,5 +7,8 @@ public record NotificationSummaryResponse(
         long dingTalkCount,
         long pendingCount,
         long sentCount,
-        long failedCount) {
+        long failedCount,
+        long pendingAuditCount,
+        long completedAuditCount,
+        long attentionCount) {
 }

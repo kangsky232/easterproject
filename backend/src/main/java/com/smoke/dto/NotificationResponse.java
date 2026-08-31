@@ -12,5 +12,10 @@ public record NotificationResponse(
         String content,
         String status,
         LocalDateTime sentAt,
+        String auditStatus,
+        String auditResult,
+        String auditorUsername,
+        String auditRemark,
+        LocalDateTime auditedAt,
         LocalDateTime createdAt) {
 }

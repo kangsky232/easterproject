@@ -20,6 +20,7 @@ import type {
   MapPositionPayload,
   MapScene,
   Notification,
+  NotificationSummary,
   RoleWorkspace,
   SystemCapabilities,
   User,
@@ -81,6 +82,18 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const devices = ref<Device[]>([])
   const alarms = ref<Alarm[]>([])
   const notifications = ref<Notification[]>([])
+  const notificationSummary = ref<NotificationSummary>({
+    total: 0,
+    appCount: 0,
+    smsCount: 0,
+    dingTalkCount: 0,
+    pendingCount: 0,
+    sentCount: 0,
+    failedCount: 0,
+    pendingAuditCount: 0,
+    completedAuditCount: 0,
+    attentionCount: 0,
+  })
   const broadcasts = ref<BroadcastRaw[]>([])
   const hazardSummary = ref<HazardSummary>({ reported: 0, processing: 0, pendingReview: 0, closed: 0, openTotal: 0 })
   const workspace = ref<RoleWorkspace | null>(null)
@@ -162,6 +175,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const canReportHazards = computed(() => hasPermission('HAZARD_REPORT'))
   const canHandleHazards = computed(() => hasPermission('HAZARD_HANDLE'))
   const canReviewHazards = computed(() => hasPermission('HAZARD_REVIEW'))
+  const canAuditNotifications = computed(() => hasPermission('NOTIFICATION_AUDIT'))
   const canSimulate = computed(
     () => canManageDevices.value && capabilities.value.mode === 'LOCAL_DEVELOPMENT',
   )
@@ -190,6 +204,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     currentUser.value = null
     workspace.value = null
     notifications.value = []
+    notificationSummary.value = { total: 0, appCount: 0, smsCount: 0, dingTalkCount: 0, pendingCount: 0, sentCount: 0, failedCount: 0, pendingAuditCount: 0, completedAuditCount: 0, attentionCount: 0 }
     broadcasts.value = []
     hazardSummary.value = { reported: 0, processing: 0, pendingReview: 0, closed: 0, openTotal: 0 }
     localStorage.removeItem(USER_KEY)
@@ -208,6 +223,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       const data = await api.login(username, password)
       workspace.value = null
       notifications.value = []
+      notificationSummary.value = { total: 0, appCount: 0, smsCount: 0, dingTalkCount: 0, pendingCount: 0, sentCount: 0, failedCount: 0, pendingAuditCount: 0, completedAuditCount: 0, attentionCount: 0 }
       broadcasts.value = []
       hazardSummary.value = { reported: 0, processing: 0, pendingReview: 0, closed: 0, openTotal: 0 }
       setToken(data.token)
@@ -228,6 +244,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     devices.value = []
     alarms.value = []
     notifications.value = []
+    notificationSummary.value = { total: 0, appCount: 0, smsCount: 0, dingTalkCount: 0, pendingCount: 0, sentCount: 0, failedCount: 0, pendingAuditCount: 0, completedAuditCount: 0, attentionCount: 0 }
     broadcasts.value = []
     hazardSummary.value = { reported: 0, processing: 0, pendingReview: 0, closed: 0, openTotal: 0 }
     workspace.value = null
@@ -261,6 +278,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     if (currentUser.value?.role && currentUser.value.role !== nextUser.role) {
       workspace.value = null
       notifications.value = []
+      notificationSummary.value = { total: 0, appCount: 0, smsCount: 0, dingTalkCount: 0, pendingCount: 0, sentCount: 0, failedCount: 0, pendingAuditCount: 0, completedAuditCount: 0, attentionCount: 0 }
       broadcasts.value = []
       hazardSummary.value = { reported: 0, processing: 0, pendingReview: 0, closed: 0, openTotal: 0 }
     }
@@ -372,6 +390,10 @@ export const useDashboardStore = defineStore('dashboard', () => {
     broadcasts.value = page.records || []
   }
 
+  async function fetchNotificationSummary(): Promise<void> {
+    notificationSummary.value = await api.fetchNotificationSummary()
+  }
+
   async function fetchHazardSummary(): Promise<void> {
     hazardSummary.value = await api.fetchHazardSummary()
   }
@@ -401,7 +423,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       fetchAlarms(),
       ...(canViewModule('map') ? [fetchMapScene()] : []),
       ...(canViewModule('hazards') ? [fetchHazardSummary()] : []),
-      ...(canViewModule('notifications') ? [fetchNotifications()] : []),
+      ...(canViewModule('notifications') ? [fetchNotifications(), fetchNotificationSummary()] : []),
       ...(canViewModule('broadcasts') ? [fetchBroadcasts()] : []),
     ])
     for (const result of results) {
@@ -772,6 +794,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     devices,
     alarms,
     notifications,
+    notificationSummary,
     broadcasts,
     hazardSummary,
     workspace,
@@ -812,6 +835,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     canReportHazards,
     canHandleHazards,
     canReviewHazards,
+    canAuditNotifications,
     canSimulate,
     broadcastPersistenceOnly,
     kpiItems,
@@ -822,6 +846,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     logout,
     refreshAll,
     fetchHazardSummary,
+    fetchNotifications,
+    fetchNotificationSummary,
     selectDevice,
     setTrendHours,
     selectMetric,

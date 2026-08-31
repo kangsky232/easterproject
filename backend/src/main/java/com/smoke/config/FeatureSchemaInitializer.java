@@ -40,13 +40,22 @@ public class FeatureSchemaInitializer implements InitializingBean {
                     content VARCHAR(500) NOT NULL,
                     status VARCHAR(16) NOT NULL,
                     sent_at DATETIME NULL,
+                    audit_status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+                    audit_result VARCHAR(24) NULL,
+                    auditor_username VARCHAR(64) NULL,
+                    audit_remark VARCHAR(500) NULL,
+                    audited_at DATETIME NULL,
                     created_at DATETIME NOT NULL,
                     INDEX idx_notification_time (created_at),
                     INDEX idx_notification_alert (alert_id),
+                    INDEX idx_notification_audit (audit_status, status, created_at),
+                    CONSTRAINT chk_notification_audit_status CHECK (audit_status IN ('PENDING', 'COMPLETED')),
+                    CONSTRAINT chk_notification_audit_result CHECK (audit_result IS NULL OR audit_result IN ('NORMAL', 'FOLLOWED_UP')),
                     CONSTRAINT fk_notification_alert FOREIGN KEY (alert_id) REFERENCES alert_record(id)
                 )
                 """);
         makeNotificationSentAtNullable();
+        initializeNotificationAuditSchema();
         jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS dingtalk_recipient (
                     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -149,12 +158,42 @@ public class FeatureSchemaInitializer implements InitializingBean {
         }
     }
 
+    private void initializeNotificationAuditSchema() {
+        if (!columnExists("notification_log", "audit_status")) {
+            jdbcTemplate.execute("ALTER TABLE notification_log ADD COLUMN audit_status VARCHAR(16) NOT NULL DEFAULT 'PENDING' AFTER sent_at");
+        }
+        if (!columnExists("notification_log", "audit_result")) {
+            jdbcTemplate.execute("ALTER TABLE notification_log ADD COLUMN audit_result VARCHAR(24) NULL AFTER audit_status");
+        }
+        if (!columnExists("notification_log", "auditor_username")) {
+            jdbcTemplate.execute("ALTER TABLE notification_log ADD COLUMN auditor_username VARCHAR(64) NULL AFTER audit_result");
+        }
+        if (!columnExists("notification_log", "audit_remark")) {
+            jdbcTemplate.execute("ALTER TABLE notification_log ADD COLUMN audit_remark VARCHAR(500) NULL AFTER auditor_username");
+        }
+        if (!columnExists("notification_log", "audited_at")) {
+            jdbcTemplate.execute("ALTER TABLE notification_log ADD COLUMN audited_at DATETIME NULL AFTER audit_remark");
+        }
+        if (!indexExists("notification_log", "idx_notification_audit")) {
+            jdbcTemplate.execute("CREATE INDEX idx_notification_audit ON notification_log (audit_status, status, created_at)");
+        }
+    }
+
     private boolean columnExists(String table, String column) {
         Integer count = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*)
                 FROM information_schema.columns
                 WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?
                 """, Integer.class, table, column);
+        return count != null && count > 0;
+    }
+
+    private boolean indexExists(String table, String index) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM information_schema.statistics
+                WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?
+                """, Integer.class, table, index);
         return count != null && count > 0;
     }
 

@@ -290,15 +290,16 @@ MQTT 设备下行仍未实现。因此广播状态成功只表示钉钉单聊投
 
 复核结论用于本地演示与人工处置辅助；尚未接入摄像头流或图像模型时，不会宣称其为真实视觉识别结果。
 
-## 通知记录
+## 通知审计闭环
 
 以下读取接口仅消防员、小区管理员和系统管理员可用，居民工作台不展示通知审计数据：
 
-- `GET /api/notifications?page=1&pageSize=50&alertId=&deviceId=&channel=&status=`：分页查询通知记录，支持按告警、设备、通道和投递状态筛选。
+- `GET /api/notifications?page=1&pageSize=50&alertId=&deviceId=&channel=&status=&auditStatus=`：分页查询通知记录，支持按告警、设备、通道、投递状态和核查状态筛选。
 - `GET /api/notifications/{id}`：查询单条通知记录。
-- `GET /api/notifications/summary`：查询 APP/SMS/钉钉与投递状态汇总。
+- `GET /api/notifications/summary`：查询 APP/SMS/钉钉、投递状态、待核查、已核查和异常待办汇总。
+- `POST /api/notifications/{id}/audit`：消防员、小区管理员或系统管理员填写核查结果与结论，记录当前账号和完成时间；已核查记录不可重复覆盖。
 
-通道支持 `APP`、`SMS`、`DINGTALK`；投递状态为 `PENDING`、`SENT`、`FAILED`，筛选值忽略首尾空格和大小写。系统创建告警时，APP 记录标记为 `SENT`；未接入供应商的 SMS 记录标记为 `PENDING`、`sentAt=null`；配置钉钉后会真实投递并按接口结果把 DINGTALK 记录标记为 `SENT` 或 `FAILED`。详见 [前端接口协作说明](FRONTEND_API.md)。
+通道支持 `APP`、`SMS`、`DINGTALK`；投递状态为 `PENDING`、`SENT`、`FAILED`，核查状态为 `PENDING`、`COMPLETED`，筛选值忽略首尾空格和大小写。核查请求示例为 `{"result":"FOLLOWED_UP","remark":"已核对钉钉接收人绑定并通知值班人员"}`，其中 `result` 支持 `NORMAL`、`FOLLOWED_UP`，`remark` 必填且最多 500 字。系统创建告警时，APP 记录标记为 `SENT`；未接入供应商的 SMS 记录标记为 `PENDING`、`sentAt=null`；配置钉钉后会真实投递并按接口结果把 DINGTALK 记录标记为 `SENT` 或 `FAILED`。审计核查只表示工作人员检查了投递日志，不代表外部接收人已读。详见 [前端接口协作说明](FRONTEND_API.md)。
 
 ## 智能问答
 

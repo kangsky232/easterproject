@@ -17,6 +17,10 @@ public class NotificationLog {
     public static final String STATUS_PENDING = "PENDING";
     public static final String STATUS_SENT = "SENT";
     public static final String STATUS_FAILED = "FAILED";
+    public static final String AUDIT_PENDING = "PENDING";
+    public static final String AUDIT_COMPLETED = "COMPLETED";
+    public static final String AUDIT_RESULT_NORMAL = "NORMAL";
+    public static final String AUDIT_RESULT_FOLLOWED_UP = "FOLLOWED_UP";
 
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -27,5 +31,10 @@ public class NotificationLog {
     private String content;
     private String status;
     private LocalDateTime sentAt;
+    private String auditStatus;
+    private String auditResult;
+    private String auditorUsername;
+    private String auditRemark;
+    private LocalDateTime auditedAt;
     private LocalDateTime createdAt;
 }

@@ -19,12 +19,13 @@ class RoleWorkspaceServiceTest {
         assertEquals(List.of("monitor", "map", "devices", "hazards", "notifications", "broadcasts", "users", "chat"),
                 workspace.modules());
         assertEquals(List.of("ALERT_HANDLE", "BROADCAST_SEND", "BROADCAST_DELETE", "DEVICE_MANAGE",
-                "MAP_POSITION_MANAGE", "USER_MANAGE", "HAZARD_REPORT", "HAZARD_HANDLE", "HAZARD_REVIEW"),
+                "MAP_POSITION_MANAGE", "USER_MANAGE", "HAZARD_REPORT", "HAZARD_HANDLE", "HAZARD_REVIEW", "NOTIFICATION_AUDIT"),
                 workspace.permissions());
         assertTrue(workspace.modules().contains("users"));
         assertTrue(workspace.modules().contains("map"));
         assertTrue(workspace.permissions().contains("MAP_POSITION_MANAGE"));
         assertTrue(workspace.permissions().contains("USER_MANAGE"));
+        assertTrue(workspace.permissions().contains("NOTIFICATION_AUDIT"));
     }
 
     @Test
@@ -48,6 +49,7 @@ class RoleWorkspaceServiceTest {
         assertFalse(workspace.modules().contains("users"));
         assertTrue(workspace.permissions().contains("DEVICE_MANAGE"));
         assertTrue(workspace.permissions().contains("MAP_POSITION_MANAGE"));
+        assertTrue(workspace.permissions().contains("NOTIFICATION_AUDIT"));
     }
 
     @Test
@@ -55,7 +57,7 @@ class RoleWorkspaceServiceTest {
         var workspace = service.workspace("FIREFIGHTER");
 
         assertEquals(List.of("monitor", "map", "hazards", "notifications", "broadcasts", "chat"), workspace.modules());
-        assertEquals(List.of("ALERT_HANDLE", "BROADCAST_SEND", "HAZARD_REPORT", "HAZARD_HANDLE"),
+        assertEquals(List.of("ALERT_HANDLE", "BROADCAST_SEND", "HAZARD_REPORT", "HAZARD_HANDLE", "NOTIFICATION_AUDIT"),
                 workspace.permissions());
         assertFalse(workspace.modules().contains("devices"));
         assertFalse(workspace.permissions().contains("BROADCAST_DELETE"));

@@ -47,11 +47,13 @@ class NotificationServiceTest {
         assertNotNull(captor.getAllValues().get(0).getSentAt());
         assertEquals(NotificationLog.STATUS_PENDING, captor.getAllValues().get(1).getStatus());
         assertNull(captor.getAllValues().get(1).getSentAt());
+        assertEquals(NotificationLog.AUDIT_PENDING, captor.getAllValues().get(0).getAuditStatus());
+        assertEquals(NotificationLog.AUDIT_PENDING, captor.getAllValues().get(1).getAuditStatus());
     }
 
     @Test
     void summaryProvidesChannelAndDeliveryStatusCounts() {
-        when(notificationLogMapper.selectCount(any())).thenReturn(15L, 6L, 6L, 3L, 1L, 13L, 1L);
+        when(notificationLogMapper.selectCount(any())).thenReturn(15L, 6L, 6L, 3L, 1L, 13L, 1L, 4L, 11L, 1L);
         NotificationService service = new NotificationService(notificationLogMapper);
 
         var summary = service.summary();
@@ -63,6 +65,9 @@ class NotificationServiceTest {
         assertEquals(1L, summary.pendingCount());
         assertEquals(13L, summary.sentCount());
         assertEquals(1L, summary.failedCount());
+        assertEquals(4L, summary.pendingAuditCount());
+        assertEquals(11L, summary.completedAuditCount());
+        assertEquals(1L, summary.attentionCount());
     }
 
     @Test
@@ -121,14 +126,49 @@ class NotificationServiceTest {
     }
 
     @Test
+    void auditRecordsImmutableOperatorConclusion() {
+        NotificationLog notification = new NotificationLog();
+        notification.setId(12L);
+        notification.setAuditStatus(NotificationLog.AUDIT_PENDING);
+        when(notificationLogMapper.selectById(12L)).thenReturn(notification);
+        when(notificationLogMapper.update(any(), any())).thenReturn(1);
+        NotificationService service = new NotificationService(notificationLogMapper);
+
+        var response = service.audit(12L, "followed_up", " 已联系值班人员并核对接收配置 ", "firefighter");
+
+        assertEquals(NotificationLog.AUDIT_COMPLETED, response.auditStatus());
+        assertEquals(NotificationLog.AUDIT_RESULT_FOLLOWED_UP, response.auditResult());
+        assertEquals("firefighter", response.auditorUsername());
+        assertEquals("已联系值班人员并核对接收配置", response.auditRemark());
+        assertNotNull(response.auditedAt());
+        verify(notificationLogMapper).update(any(), any());
+    }
+
+    @Test
+    void auditRejectsRepeatedModification() {
+        NotificationLog notification = new NotificationLog();
+        notification.setId(13L);
+        notification.setAuditStatus(NotificationLog.AUDIT_COMPLETED);
+        when(notificationLogMapper.selectById(13L)).thenReturn(notification);
+        NotificationService service = new NotificationService(notificationLogMapper);
+
+        assertThrows(
+                com.smoke.exception.BusinessException.class,
+                () -> service.audit(13L, "NORMAL", "重复修改", "admin"));
+    }
+
+    @Test
     void listRejectsUnsupportedDeliveryFilters() {
         NotificationService service = new NotificationService(notificationLogMapper);
 
         assertThrows(
                 com.smoke.exception.BusinessException.class,
-                () -> service.list(1, 20, null, null, "EMAIL", null));
+                () -> service.list(1, 20, null, null, "EMAIL", null, null));
         assertThrows(
                 com.smoke.exception.BusinessException.class,
-                () -> service.list(1, 20, null, null, null, "UNKNOWN"));
+                () -> service.list(1, 20, null, null, null, "UNKNOWN", null));
+        assertThrows(
+                com.smoke.exception.BusinessException.class,
+                () -> service.list(1, 20, null, null, null, null, "UNKNOWN"));
     }
 }

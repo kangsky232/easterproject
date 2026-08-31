@@ -31,6 +31,12 @@ public class NotificationService {
             NotificationLog.STATUS_PENDING,
             NotificationLog.STATUS_SENT,
             NotificationLog.STATUS_FAILED);
+    private static final Set<String> AUDIT_STATUSES = Set.of(
+            NotificationLog.AUDIT_PENDING,
+            NotificationLog.AUDIT_COMPLETED);
+    private static final Set<String> AUDIT_RESULTS = Set.of(
+            NotificationLog.AUDIT_RESULT_NORMAL,
+            NotificationLog.AUDIT_RESULT_FOLLOWED_UP);
 
     private final NotificationLogMapper notificationLogMapper;
     private final DingTalkMessageService dingTalkMessageService;
@@ -64,18 +70,22 @@ public class NotificationService {
             Long alertId,
             String deviceId,
             String channel,
-            String status) {
+            String status,
+            String auditStatus) {
         validatePage(page, pageSize);
         String normalizedDeviceId = normalizeText(deviceId);
         String normalizedChannel = normalizeCode(channel);
         String normalizedStatus = normalizeCode(status);
+        String normalizedAuditStatus = normalizeCode(auditStatus);
         validateChannel(normalizedChannel);
         validateStatus(normalizedStatus);
+        validateAuditStatus(normalizedAuditStatus);
         LambdaQueryWrapper<NotificationLog> query = Wrappers.<NotificationLog>lambdaQuery()
                 .eq(alertId != null, NotificationLog::getAlertId, alertId)
                 .eq(normalizedDeviceId != null, NotificationLog::getDeviceId, normalizedDeviceId)
                 .eq(normalizedChannel != null, NotificationLog::getChannel, normalizedChannel)
                 .eq(normalizedStatus != null, NotificationLog::getStatus, normalizedStatus)
+                .eq(normalizedAuditStatus != null, NotificationLog::getAuditStatus, normalizedAuditStatus)
                 .orderByDesc(NotificationLog::getCreatedAt);
         Page<NotificationLog> result = notificationLogMapper.selectPage(new Page<>(page, pageSize), query);
         return new PageResponse<>(
@@ -101,7 +111,52 @@ public class NotificationService {
                 count(Wrappers.<NotificationLog>lambdaQuery().eq(NotificationLog::getChannel, NotificationLog.CHANNEL_DINGTALK)),
                 count(Wrappers.<NotificationLog>lambdaQuery().eq(NotificationLog::getStatus, NotificationLog.STATUS_PENDING)),
                 count(Wrappers.<NotificationLog>lambdaQuery().eq(NotificationLog::getStatus, NotificationLog.STATUS_SENT)),
-                count(Wrappers.<NotificationLog>lambdaQuery().eq(NotificationLog::getStatus, NotificationLog.STATUS_FAILED)));
+                count(Wrappers.<NotificationLog>lambdaQuery().eq(NotificationLog::getStatus, NotificationLog.STATUS_FAILED)),
+                count(Wrappers.<NotificationLog>lambdaQuery().eq(NotificationLog::getAuditStatus, NotificationLog.AUDIT_PENDING)),
+                count(Wrappers.<NotificationLog>lambdaQuery().eq(NotificationLog::getAuditStatus, NotificationLog.AUDIT_COMPLETED)),
+                count(Wrappers.<NotificationLog>lambdaQuery()
+                        .eq(NotificationLog::getStatus, NotificationLog.STATUS_FAILED)
+                        .eq(NotificationLog::getAuditStatus, NotificationLog.AUDIT_PENDING)));
+    }
+
+    public NotificationResponse audit(Long id, String result, String remark, String auditorUsername) {
+        NotificationLog notification = notificationLogMapper.selectById(id);
+        if (notification == null) {
+            throw new BusinessException(404, "通知记录不存在");
+        }
+        if (NotificationLog.AUDIT_COMPLETED.equals(notification.getAuditStatus())) {
+            throw new BusinessException(409, "该通知记录已经完成核查，不能重复修改审计结论");
+        }
+        String normalizedResult = normalizeCode(result);
+        String normalizedRemark = normalizeText(remark);
+        String normalizedAuditor = normalizeText(auditorUsername);
+        if (!AUDIT_RESULTS.contains(normalizedResult)) {
+            throw new BusinessException(400, "result 仅支持 NORMAL 或 FOLLOWED_UP");
+        }
+        if (normalizedRemark == null || normalizedRemark.length() > 500) {
+            throw new BusinessException(400, "核查结论不能为空且不能超过 500 个字符");
+        }
+        if (normalizedAuditor == null) {
+            throw new BusinessException(401, "无法识别当前操作账号");
+        }
+        LocalDateTime auditedAt = LocalDateTime.now();
+        int updated = notificationLogMapper.update(null, Wrappers.<NotificationLog>update()
+                .eq("id", id)
+                .eq("audit_status", NotificationLog.AUDIT_PENDING)
+                .set("audit_status", NotificationLog.AUDIT_COMPLETED)
+                .set("audit_result", normalizedResult)
+                .set("auditor_username", normalizedAuditor)
+                .set("audit_remark", normalizedRemark)
+                .set("audited_at", auditedAt));
+        if (updated != 1) {
+            throw new BusinessException(409, "通知核查状态已变化，请刷新后重试");
+        }
+        notification.setAuditStatus(NotificationLog.AUDIT_COMPLETED);
+        notification.setAuditResult(normalizedResult);
+        notification.setAuditorUsername(normalizedAuditor);
+        notification.setAuditRemark(normalizedRemark);
+        notification.setAuditedAt(auditedAt);
+        return toResponse(notification);
     }
 
     private void create(AlertRecord alert, String channel, String content, String status) {
@@ -119,6 +174,7 @@ public class NotificationService {
         notification.setContent(content);
         notification.setStatus(status);
         notification.setSentAt(NotificationLog.STATUS_SENT.equals(status) ? now : null);
+        notification.setAuditStatus(NotificationLog.AUDIT_PENDING);
         notification.setCreatedAt(now);
         notificationLogMapper.insert(notification);
     }
@@ -177,6 +233,11 @@ public class NotificationService {
                 notification.getContent(),
                 notification.getStatus(),
                 notification.getSentAt(),
+                notification.getAuditStatus() == null ? NotificationLog.AUDIT_PENDING : notification.getAuditStatus(),
+                notification.getAuditResult(),
+                notification.getAuditorUsername(),
+                notification.getAuditRemark(),
+                notification.getAuditedAt(),
                 notification.getCreatedAt());
     }
 
@@ -195,6 +256,12 @@ public class NotificationService {
     private void validateStatus(String status) {
         if (StringUtils.hasText(status) && !STATUSES.contains(status)) {
             throw new BusinessException(400, "status 仅支持 PENDING、SENT 或 FAILED");
+        }
+    }
+
+    private void validateAuditStatus(String auditStatus) {
+        if (StringUtils.hasText(auditStatus) && !AUDIT_STATUSES.contains(auditStatus)) {
+            throw new BusinessException(400, "auditStatus 仅支持 PENDING 或 COMPLETED");
         }
     }
 

@@ -16,6 +16,9 @@ import type {
   MapPositionPayload,
   MapScene,
   NotificationRaw,
+  NotificationAuditResult,
+  NotificationAuditStatus,
+  NotificationSummary,
   OverviewRaw,
   PageResult,
   ReviewResponse,
@@ -82,8 +85,33 @@ export function fetchTrend(deviceId: number, query: TrendQuery): Promise<TrendPo
   )
 }
 
-export function fetchNotifications(): Promise<PageResult<NotificationRaw>> {
-  return api('/api/notifications?page=1&pageSize=100')
+export interface NotificationQuery {
+  channel?: string
+  status?: string
+  auditStatus?: NotificationAuditStatus | ''
+}
+
+export function fetchNotifications(query: NotificationQuery = {}): Promise<PageResult<NotificationRaw>> {
+  const params = new URLSearchParams({ page: '1', pageSize: '200' })
+  if (query.channel) params.set('channel', query.channel)
+  if (query.status) params.set('status', query.status)
+  if (query.auditStatus) params.set('auditStatus', query.auditStatus)
+  return api(`/api/notifications?${params}`)
+}
+
+export function fetchNotificationSummary(): Promise<NotificationSummary> {
+  return api('/api/notifications/summary')
+}
+
+export function auditNotification(
+  id: number,
+  result: NotificationAuditResult,
+  remark: string,
+): Promise<NotificationRaw> {
+  return api(`/api/notifications/${id}/audit`, {
+    method: 'POST',
+    body: JSON.stringify({ result, remark }),
+  })
 }
 
 export function fetchBroadcasts(): Promise<PageResult<BroadcastRaw>> {

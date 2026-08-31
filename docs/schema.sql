@@ -95,9 +95,19 @@ CREATE TABLE IF NOT EXISTS notification_log (
     content VARCHAR(500) NOT NULL,
     status VARCHAR(16) NOT NULL,
     sent_at DATETIME NULL,
+    audit_status VARCHAR(16) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING-待核查 COMPLETED-已核查',
+    audit_result VARCHAR(24) COMMENT 'NORMAL-核查正常 FOLLOWED_UP-已跟进处理',
+    auditor_username VARCHAR(64) COMMENT '核查账号',
+    audit_remark VARCHAR(500) COMMENT '核查结论',
+    audited_at DATETIME COMMENT '核查完成时间',
     created_at DATETIME NOT NULL,
     INDEX idx_notification_time (created_at),
     INDEX idx_notification_alert (alert_id),
+    INDEX idx_notification_audit (audit_status, status, created_at),
+    CONSTRAINT chk_notification_audit_status CHECK (audit_status IN ('PENDING', 'COMPLETED')),
+    CONSTRAINT chk_notification_audit_result CHECK (
+        audit_result IS NULL OR audit_result IN ('NORMAL', 'FOLLOWED_UP')
+    ),
     CONSTRAINT fk_notification_alert FOREIGN KEY (alert_id) REFERENCES alert_record(id)
 );
 

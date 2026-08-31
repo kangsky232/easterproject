@@ -73,14 +73,36 @@ export interface TrendPointRaw {
 }
 
 export interface NotificationRaw {
-  id?: number
+  id: number
+  alertId: number
   channel: string
   receiver?: string
   deviceId?: string
   content?: string
   status?: string
   sentAt?: string | null
+  auditStatus: NotificationAuditStatus
+  auditResult?: NotificationAuditResult | null
+  auditorUsername?: string | null
+  auditRemark?: string | null
+  auditedAt?: string | null
   createdAt?: string | null
+}
+
+export type NotificationAuditStatus = 'PENDING' | 'COMPLETED'
+export type NotificationAuditResult = 'NORMAL' | 'FOLLOWED_UP'
+
+export interface NotificationSummary {
+  total: number
+  appCount: number
+  smsCount: number
+  dingTalkCount: number
+  pendingCount: number
+  sentCount: number
+  failedCount: number
+  pendingAuditCount: number
+  completedAuditCount: number
+  attentionCount: number
 }
 
 export interface BroadcastRaw {
@@ -294,12 +316,4 @@ export interface Alarm {
   verifyResult?: string
 }
 
-export interface Notification {
-  channel: string
-  receiver?: string
-  deviceId?: string
-  content?: string
-  status?: string
-  sentAt?: string | null
-  createdAt?: string | null
-}
+export type Notification = NotificationRaw
