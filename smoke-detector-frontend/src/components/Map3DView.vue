@@ -79,6 +79,9 @@ interface CameraVariant {
   image: string
 }
 
+const FLOOR_HEIGHT = 4.6
+const BUILDING_SIDES: ReadonlyArray<readonly [number, number]> = [[0, 1], [1, 2], [2, 3], [3, 0]]
+
 // 当前社区共 19 层，常规机位一层一张独立图片；第二机位使用错位索引，
 // 因此同一楼层的两个常规机位也不会展示同一张图。
 const floorCameraVariants: readonly CameraVariant[] = [
@@ -255,6 +258,35 @@ function project(x: number, z: number, height = 0): Point {
   return { x: 500 + rx * 7, y: 405 + rz * 3.35 - height * 6 }
 }
 
+function projectDeviceToFacade(building: MapBuilding, device: MapDevice): Point {
+  const buildingX = Number(building.positionX)
+  const buildingZ = Number(building.positionZ)
+  const width = Number(building.width)
+  const depth = Number(building.depth)
+  const corners = [
+    { x: buildingX, z: buildingZ },
+    { x: buildingX + width, z: buildingZ },
+    { x: buildingX + width, z: buildingZ + depth },
+    { x: buildingX, z: buildingZ + depth },
+  ]
+  const projectedBottom = corners.map((corner) => project(corner.x, corner.z))
+  const [from, to] = BUILDING_SIDES
+    .map((side) => ({ side, depth: (projectedBottom[side[0]].y + projectedBottom[side[1]].y) / 2 }))
+    .sort((a, b) => b.depth - a.depth)[0].side
+  const faceStart = corners[from]
+  const faceEnd = corners[to]
+  const localX = Math.min(width, Math.max(0, Number(device.positionX ?? width / 2)))
+  const localZ = Math.min(depth, Math.max(0, Number(device.positionZ ?? depth / 2)))
+  const height = (Math.min(building.floors, Math.max(1, device.floorNo ?? 1)) - 0.5) * FLOOR_HEIGHT
+
+  // 设备点需要贴在当前视角最近的楼栋立面上。若按楼内 Z 深度直接投影，
+  // 透视偏移会让标记看起来落在相邻楼层。
+  if (faceStart.z === faceEnd.z) {
+    return project(buildingX + localX, faceStart.z, height)
+  }
+  return project(faceStart.x, buildingZ + localZ, height)
+}
+
 function points(items: Point[]): string {
   return items.map((item) => item.x.toFixed(1) + ',' + item.y.toFixed(1)).join(' ')
 }
@@ -302,11 +334,11 @@ const buildingVisuals = computed<BuildingVisual[]>(() =>
     const z = Number(building.positionZ)
     const width = Number(building.width)
     const depth = Number(building.depth)
-    const height = building.floors * 4.6
+    const height = building.floors * FLOOR_HEIGHT
     const bottom = [project(x, z), project(x + width, z), project(x + width, z + depth), project(x, z + depth)]
     const top = [project(x, z, height), project(x + width, z, height), project(x + width, z + depth, height), project(x, z + depth, height)]
     const center = project(x + width / 2, z + depth / 2, height)
-    const visibleSides = [[0, 1], [1, 2], [2, 3], [3, 0]]
+    const visibleSides = BUILDING_SIDES
       .map(([from, to]) => ({
         from,
         to,
@@ -361,12 +393,10 @@ const deviceVisuals = computed<DeviceVisual[]>(() =>
   (scene.value?.devices ?? []).flatMap((device) => {
     const building = device.buildingCode ? buildingMap.value.get(device.buildingCode) : null
     if (!building || device.floorNo == null) return []
-    const x = Number(building.positionX) + Number(device.positionX ?? 0)
-    const z = Number(building.positionZ) + Number(device.positionZ ?? 0)
     const label = device.roomLabel || '第' + formatChineseNumber(device.floorNo) + '层'
     return [{
       device,
-      point: project(x, z, (device.floorNo - 0.5) * 4.6),
+      point: projectDeviceToFacade(building, device),
       labelWidth: Math.max(42, label.length * 10 + 18),
     }]
   }),
