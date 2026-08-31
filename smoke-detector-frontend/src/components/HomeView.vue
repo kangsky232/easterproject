@@ -17,7 +17,6 @@ const MENU: { key: ModuleKey; label: string }[] = [
   { key: 'monitor', label: '📊 数据总览' },
   { key: 'map', label: '🏙️ 3D地图' },
   { key: 'devices', label: '🔧 设备管理' },
-  { key: 'chat', label: '💬 智能问答' },
   { key: 'notifications', label: '🔔 通知记录' },
   { key: 'broadcasts', label: '📣 广播管理' },
   { key: 'users', label: '👥 用户管理' },

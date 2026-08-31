@@ -33,7 +33,6 @@ type ViewName =
   | 'monitor'
   | 'map'
   | 'devices'
-  | 'chat'
   | 'notifications'
   | 'broadcasts'
   | 'users'
@@ -42,7 +41,6 @@ const FUNCTION_VIEWS: ViewName[] = [
   'monitor',
   'map',
   'devices',
-  'chat',
   'notifications',
   'broadcasts',
   'users',
@@ -60,7 +58,7 @@ const tabs = computed(() => {
     SYSTEM_ADMIN: { monitor: '📊 系统总览', map: '🏙️ 3D 社区', devices: '🔧 设备管理', chat: '💬 智能问答', notifications: '🔔 通知审计', broadcasts: '📣 广播管理', users: '👥 用户管理' },
   }
   const fallback: Record<ModuleKey, string> = { monitor: '📊 监控大屏', map: '🏙️ 模拟 3D 地图', devices: '🔧 设备管理', chat: '💬 智能问答', notifications: '🔔 通知记录', broadcasts: '📣 广播记录', users: '👥 用户管理' }
-  const order: ModuleKey[] = ['monitor', 'map', 'devices', 'chat', 'notifications', 'broadcasts', 'users']
+  const order: ModuleKey[] = ['monitor', 'map', 'devices', 'notifications', 'broadcasts', 'users']
   return order
     .filter((key) => store.canViewModule(key))
     .map((key) => ({ key, label: labels[role]?.[key] ?? fallback[key] }))
@@ -187,10 +185,6 @@ onUnmounted(() => {
         <DeviceManageView />
       </div>
 
-      <div v-show="view === 'chat'" class="view-pane">
-        <ChatView />
-      </div>
-
       <div v-show="view === 'notifications'" class="view-pane">
         <NotificationsView />
       </div>
@@ -211,4 +205,5 @@ onUnmounted(() => {
   <TokenModal />
   <ConfirmModal />
   <LoginModal />
+  <ChatView v-if="store.token && store.canViewModule('chat')" />
 </template>
