@@ -12,24 +12,26 @@ public class RoleWorkspaceService {
         return switch (roleCode) {
             case "SYSTEM_ADMIN" -> response(
                     roleCode, "系统管理员", "系统运行与安全治理",
-                    "查看全局态势，管理设备、地图位置、广播、通知和系统账号。",
-                    List.of("monitor", "map", "devices", "notifications", "broadcasts", "users", "chat"),
-                    List.of("ALERT_HANDLE", "BROADCAST_SEND", "BROADCAST_DELETE", "DEVICE_MANAGE", "MAP_POSITION_MANAGE", "USER_MANAGE"));
+                    "查看全局态势，管理设备、地图位置、隐患闭环、广播、通知和系统账号。",
+                    List.of("monitor", "map", "devices", "hazards", "notifications", "broadcasts", "users", "chat"),
+                    List.of("ALERT_HANDLE", "BROADCAST_SEND", "BROADCAST_DELETE", "DEVICE_MANAGE", "MAP_POSITION_MANAGE", "USER_MANAGE",
+                            "HAZARD_REPORT", "HAZARD_HANDLE", "HAZARD_REVIEW"));
             case "COMMUNITY_ADMIN" -> response(
                     roleCode, "小区管理员", "小区消防安全工作台",
-                    "负责设备接入、社区态势监控、告警处置和日常安全广播。",
-                    List.of("monitor", "map", "devices", "notifications", "broadcasts", "chat"),
-                    List.of("ALERT_HANDLE", "BROADCAST_SEND", "BROADCAST_DELETE", "DEVICE_MANAGE", "MAP_POSITION_MANAGE"));
+                    "负责设备接入、社区态势监控、告警处置、隐患复核和日常安全广播。",
+                    List.of("monitor", "map", "devices", "hazards", "notifications", "broadcasts", "chat"),
+                    List.of("ALERT_HANDLE", "BROADCAST_SEND", "BROADCAST_DELETE", "DEVICE_MANAGE", "MAP_POSITION_MANAGE",
+                            "HAZARD_REPORT", "HAZARD_HANDLE", "HAZARD_REVIEW"));
             case "FIREFIGHTER" -> response(
                     roleCode, "消防员", "火情应急处置工作台",
-                    "聚焦活动告警、3D 空间定位、通知追踪和应急广播，不开放设备与账号配置。",
-                    List.of("monitor", "map", "notifications", "broadcasts", "chat"),
-                    List.of("ALERT_HANDLE", "BROADCAST_SEND"));
+                    "聚焦活动告警、3D 空间定位、隐患整改、通知追踪和应急广播，不开放设备与账号配置。",
+                    List.of("monitor", "map", "hazards", "notifications", "broadcasts", "chat"),
+                    List.of("ALERT_HANDLE", "BROADCAST_SEND", "HAZARD_REPORT", "HAZARD_HANDLE"));
             default -> response(
                     "RESIDENT", "居民", "我的居住安全",
-                    "以只读方式查看社区设备状态、3D 位置和安全问答，不开放管理与处置操作。",
-                    List.of("monitor", "map", "chat"),
-                    List.of("READ_ONLY"));
+                    "查看社区设备状态和 3D 位置，可上报安全隐患并跟踪整改结果。",
+                    List.of("monitor", "map", "hazards", "chat"),
+                    List.of("READ_ONLY", "HAZARD_REPORT"));
         };
     }
 

@@ -7,6 +7,11 @@ import type {
   ChatResponse,
   DeviceRaw,
   HistoryPointRaw,
+  HazardDetail,
+  HazardPriority,
+  HazardStatus,
+  HazardSummary,
+  HazardTicket,
   LoginResponse,
   MapPositionPayload,
   MapScene,
@@ -83,6 +88,55 @@ export function fetchNotifications(): Promise<PageResult<NotificationRaw>> {
 
 export function fetchBroadcasts(): Promise<PageResult<BroadcastRaw>> {
   return api('/api/broadcasts?page=1&pageSize=100')
+}
+
+export interface HazardQuery {
+  status?: HazardStatus | ''
+  priority?: HazardPriority | ''
+}
+
+export interface CreateHazardPayload {
+  title: string
+  description: string
+  location: string
+  priority: HazardPriority
+}
+
+export function fetchHazards(query: HazardQuery = {}): Promise<PageResult<HazardTicket>> {
+  const params = new URLSearchParams({ page: '1', pageSize: '200' })
+  if (query.status) params.set('status', query.status)
+  if (query.priority) params.set('priority', query.priority)
+  return api(`/api/hazards?${params}`)
+}
+
+export function fetchHazardSummary(): Promise<HazardSummary> {
+  return api('/api/hazards/summary')
+}
+
+export function fetchHazard(id: number): Promise<HazardDetail> {
+  return api(`/api/hazards/${id}`)
+}
+
+export function createHazard(payload: CreateHazardPayload): Promise<HazardTicket> {
+  return api('/api/hazards', { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export function claimHazard(id: number): Promise<HazardTicket> {
+  return api(`/api/hazards/${id}/claim`, { method: 'POST' })
+}
+
+export function submitHazard(id: number, resolution: string): Promise<HazardTicket> {
+  return api(`/api/hazards/${id}/submit`, {
+    method: 'POST',
+    body: JSON.stringify({ resolution }),
+  })
+}
+
+export function reviewHazard(id: number, approved: boolean, remark: string): Promise<HazardTicket> {
+  return api(`/api/hazards/${id}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ approved, remark }),
+  })
 }
 
 export function login(username: string, password: string): Promise<LoginResponse> {

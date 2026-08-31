@@ -14,6 +14,7 @@ const counts: Record<string, ReturnType<typeof useCountUp>> = {
   offline: useCountUp(() => valueOf('offline')),
   alarm: useCountUp(() => valueOf('alarm')),
   unhandled_alarms: useCountUp(() => valueOf('unhandled_alarms')),
+  open_hazards: useCountUp(() => valueOf('open_hazards')),
 }
 </script>
 

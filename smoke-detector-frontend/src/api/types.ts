@@ -195,6 +195,49 @@ export interface MapPositionPayload {
   positionZ: number
 }
 
+export type HazardStatus = 'REPORTED' | 'PROCESSING' | 'PENDING_REVIEW' | 'CLOSED'
+export type HazardPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+export type HazardActionType = 'REPORTED' | 'CLAIMED' | 'SUBMITTED' | 'APPROVED' | 'REJECTED'
+
+export interface HazardTicket {
+  id: number
+  ticketNo: string
+  title: string
+  description: string
+  location: string
+  priority: HazardPriority
+  status: HazardStatus
+  reporterUsername: string
+  assigneeUsername?: string | null
+  resolution?: string | null
+  reviewerUsername?: string | null
+  createdAt: string
+  updatedAt: string
+  closedAt?: string | null
+}
+
+export interface HazardAction {
+  id: number
+  ticketId: number
+  actionType: HazardActionType
+  operatorName: string
+  remark: string
+  createdAt: string
+}
+
+export interface HazardDetail {
+  ticket: HazardTicket
+  actions: HazardAction[]
+}
+
+export interface HazardSummary {
+  reported: number
+  processing: number
+  pendingReview: number
+  closed: number
+  openTotal: number
+}
+
 export interface ReviewResponse {
   reviewResult: string
 }

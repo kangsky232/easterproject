@@ -16,10 +16,11 @@ class RoleWorkspaceServiceTest {
     void systemAdministratorReceivesUserAndMapManagementModules() {
         var workspace = service.workspace("SYSTEM_ADMIN");
 
-        assertEquals(List.of("monitor", "map", "devices", "notifications", "broadcasts", "users", "chat"),
+        assertEquals(List.of("monitor", "map", "devices", "hazards", "notifications", "broadcasts", "users", "chat"),
                 workspace.modules());
         assertEquals(List.of("ALERT_HANDLE", "BROADCAST_SEND", "BROADCAST_DELETE", "DEVICE_MANAGE",
-                "MAP_POSITION_MANAGE", "USER_MANAGE"), workspace.permissions());
+                "MAP_POSITION_MANAGE", "USER_MANAGE", "HAZARD_REPORT", "HAZARD_HANDLE", "HAZARD_REVIEW"),
+                workspace.permissions());
         assertTrue(workspace.modules().contains("users"));
         assertTrue(workspace.modules().contains("map"));
         assertTrue(workspace.permissions().contains("MAP_POSITION_MANAGE"));
@@ -30,8 +31,8 @@ class RoleWorkspaceServiceTest {
     void residentReceivesReadOnlyInterface() {
         var workspace = service.workspace("RESIDENT");
 
-        assertEquals(List.of("monitor", "map", "chat"), workspace.modules());
-        assertEquals(List.of("READ_ONLY"), workspace.permissions());
+        assertEquals(List.of("monitor", "map", "hazards", "chat"), workspace.modules());
+        assertEquals(List.of("READ_ONLY", "HAZARD_REPORT"), workspace.permissions());
         assertTrue(workspace.modules().contains("map"));
         assertFalse(workspace.modules().contains("devices"));
         assertFalse(workspace.modules().contains("notifications"));
@@ -42,7 +43,7 @@ class RoleWorkspaceServiceTest {
     void communityAdministratorReceivesOperationalManagementModulesInWorkflowOrder() {
         var workspace = service.workspace("COMMUNITY_ADMIN");
 
-        assertEquals(List.of("monitor", "map", "devices", "notifications", "broadcasts", "chat"),
+        assertEquals(List.of("monitor", "map", "devices", "hazards", "notifications", "broadcasts", "chat"),
                 workspace.modules());
         assertFalse(workspace.modules().contains("users"));
         assertTrue(workspace.permissions().contains("DEVICE_MANAGE"));
@@ -53,8 +54,9 @@ class RoleWorkspaceServiceTest {
     void firefighterReceivesResponseModulesWithoutConfigurationPages() {
         var workspace = service.workspace("FIREFIGHTER");
 
-        assertEquals(List.of("monitor", "map", "notifications", "broadcasts", "chat"), workspace.modules());
-        assertEquals(List.of("ALERT_HANDLE", "BROADCAST_SEND"), workspace.permissions());
+        assertEquals(List.of("monitor", "map", "hazards", "notifications", "broadcasts", "chat"), workspace.modules());
+        assertEquals(List.of("ALERT_HANDLE", "BROADCAST_SEND", "HAZARD_REPORT", "HAZARD_HANDLE"),
+                workspace.permissions());
         assertFalse(workspace.modules().contains("devices"));
         assertFalse(workspace.permissions().contains("BROADCAST_DELETE"));
     }

@@ -24,6 +24,7 @@ import RoleWorkspaceBanner from '@/components/RoleWorkspaceBanner.vue'
 import UserAdminEntryView from '@/components/UserAdminEntryView.vue'
 import HomeView from '@/components/HomeView.vue'
 import TrendView from '@/components/TrendView.vue'
+import HazardsView from '@/components/HazardsView.vue'
 
 const store = useDashboardStore()
 
@@ -33,6 +34,7 @@ type ViewName =
   | 'monitor'
   | 'map'
   | 'devices'
+  | 'hazards'
   | 'notifications'
   | 'broadcasts'
   | 'users'
@@ -41,6 +43,7 @@ const FUNCTION_VIEWS: ViewName[] = [
   'monitor',
   'map',
   'devices',
+  'hazards',
   'notifications',
   'broadcasts',
   'users',
@@ -52,13 +55,13 @@ const isFeature = computed(() => FUNCTION_VIEWS.includes(view.value))
 const tabs = computed(() => {
   const role = store.userRole
   const labels: Record<string, Partial<Record<ModuleKey, string>>> = {
-    RESIDENT: { monitor: '🏠 我的安全', map: '🏙️ 社区 3D', chat: '💬 安全问答' },
-    FIREFIGHTER: { monitor: '🚨 应急总览', map: '🏙️ 3D 态势', chat: '💬 智能辅助', notifications: '🔔 告警通知', broadcasts: '📣 应急广播' },
-    COMMUNITY_ADMIN: { monitor: '📊 小区监控', map: '🏙️ 3D 社区', devices: '🔧 设备管理', chat: '💬 智能问答', notifications: '🔔 通知记录', broadcasts: '📣 广播管理' },
-    SYSTEM_ADMIN: { monitor: '📊 系统总览', map: '🏙️ 3D 社区', devices: '🔧 设备管理', chat: '💬 智能问答', notifications: '🔔 通知审计', broadcasts: '📣 广播管理', users: '👥 用户管理' },
+    RESIDENT: { monitor: '🏠 我的安全', map: '🏙️ 社区 3D', hazards: '🧯 隐患上报', chat: '💬 安全问答' },
+    FIREFIGHTER: { monitor: '🚨 应急总览', map: '🏙️ 3D 态势', hazards: '🧯 隐患整改', chat: '💬 智能辅助', notifications: '🔔 告警通知', broadcasts: '📣 应急广播' },
+    COMMUNITY_ADMIN: { monitor: '📊 小区监控', map: '🏙️ 3D 社区', devices: '🔧 设备管理', hazards: '🧯 隐患闭环', chat: '💬 智能问答', notifications: '🔔 通知记录', broadcasts: '📣 广播管理' },
+    SYSTEM_ADMIN: { monitor: '📊 系统总览', map: '🏙️ 3D 社区', devices: '🔧 设备管理', hazards: '🧯 隐患闭环', chat: '💬 智能问答', notifications: '🔔 通知审计', broadcasts: '📣 广播管理', users: '👥 用户管理' },
   }
-  const fallback: Record<ModuleKey, string> = { monitor: '📊 监控大屏', map: '🏙️ 模拟 3D 地图', devices: '🔧 设备管理', chat: '💬 智能问答', notifications: '🔔 通知记录', broadcasts: '📣 广播记录', users: '👥 用户管理' }
-  const order: ModuleKey[] = ['monitor', 'map', 'devices', 'notifications', 'broadcasts', 'users']
+  const fallback: Record<ModuleKey, string> = { monitor: '📊 监控大屏', map: '🏙️ 模拟 3D 地图', devices: '🔧 设备管理', hazards: '🧯 隐患闭环', chat: '💬 智能问答', notifications: '🔔 通知记录', broadcasts: '📣 广播记录', users: '👥 用户管理' }
+  const order: ModuleKey[] = ['monitor', 'map', 'devices', 'hazards', 'notifications', 'broadcasts', 'users']
   return order
     .filter((key) => store.canViewModule(key))
     .map((key) => ({ key, label: labels[role]?.[key] ?? fallback[key] }))
@@ -68,7 +71,7 @@ const showBroadcast = ref(false)
 
 function navigate(name: string): void {
   view.value = name as ViewName
-  if (name === 'devices' || name === 'notifications' || name === 'broadcasts') {
+  if (name === 'devices' || name === 'hazards' || name === 'notifications' || name === 'broadcasts') {
     void store.refreshAll()
   }
 }
@@ -183,6 +186,10 @@ onUnmounted(() => {
 
       <div v-show="view === 'devices'" class="view-pane">
         <DeviceManageView />
+      </div>
+
+      <div v-show="view === 'hazards'" class="view-pane">
+        <HazardsView :active="view === 'hazards'" />
       </div>
 
       <div v-show="view === 'notifications'" class="view-pane">

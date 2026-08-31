@@ -25,7 +25,7 @@
 - 真实 SMS、APP 推送、MQTT 或视觉服务未接入时，在产品界面明确标注不可用或模拟状态。
 - RAG 镜像当前使用 Flask 开发服务器；正式部署前改为 Gunicorn 等生产 WSGI 服务，并配置并发、超时、优雅退出和健康检查。
 - 使用 HTTPS 域名验证登录、改密后旧 Token 失效、角色权限、设备令牌、告警全流程和错误响应。
-- 已有数据库按版本依次执行 `docs/migrations/20260826_decimal_concentration.sql`、`docs/migrations/20260826_extended_sensor_metrics.sql` 和 `docs/migrations/20260828_role_workspace_3d_map.sql`，并验证小数与扩展遥测、趋势聚合、告警、角色工作区及 3D 地图位置。
+- 已有数据库按版本依次执行 `docs/migrations/20260826_decimal_concentration.sql`、`docs/migrations/20260826_extended_sensor_metrics.sql`、`docs/migrations/20260828_role_workspace_3d_map.sql` 和 `docs/migrations/20260831_hazard_workflow.sql`，并验证小数与扩展遥测、趋势聚合、告警、角色工作区、3D 地图位置及隐患闭环。
 
 ## Cloudflare Pages 演示部署
 

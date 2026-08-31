@@ -66,6 +66,7 @@ export const MODULE_LABELS = {
   monitor: '📊 实时监控',
   map: '🏙️ 3D 社区',
   devices: '🔧 设备管理',
+  hazards: '🧯 隐患闭环',
   notifications: '🔔 通知记录',
   broadcasts: '📣 广播管理',
   users: '👥 用户管理',
@@ -82,7 +83,7 @@ export interface ModuleGroup {
 
 export const MODULE_GROUPS: readonly ModuleGroup[] = [
   { key: 'monitoring', label: '监控中心', modules: ['monitor', 'map'] },
-  { key: 'response', label: '事件处置', modules: ['notifications', 'broadcasts'] },
+  { key: 'response', label: '事件处置', modules: ['hazards', 'notifications', 'broadcasts'] },
   { key: 'resources', label: '资源管理', modules: ['devices', 'users'] },
 ]
 
@@ -94,6 +95,9 @@ export type PermissionCode =
   | 'DEVICE_MANAGE'
   | 'MAP_POSITION_MANAGE'
   | 'USER_MANAGE'
+  | 'HAZARD_REPORT'
+  | 'HAZARD_HANDLE'
+  | 'HAZARD_REVIEW'
 
 // 未登录或工作区尚未从后端加载成功时，只开放所有角色都具备的基础只读页面。
 export const SAFE_MODULES: ModuleKey[] = ['monitor', 'map', 'chat']

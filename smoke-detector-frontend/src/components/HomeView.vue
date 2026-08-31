@@ -17,6 +17,7 @@ const MENU: { key: ModuleKey; label: string }[] = [
   { key: 'monitor', label: '📊 数据总览' },
   { key: 'map', label: '🏙️ 3D地图' },
   { key: 'devices', label: '🔧 设备管理' },
+  { key: 'hazards', label: '🧯 隐患闭环' },
   { key: 'notifications', label: '🔔 通知记录' },
   { key: 'broadcasts', label: '📣 广播管理' },
   { key: 'users', label: '👥 用户管理' },
@@ -31,7 +32,7 @@ const FEATURES = [
   { icon: 'flame', title: '智能感知', subtitle: '高精度烟雾传感器，快速响应', desc: '实时监测环境变化' },
   { icon: 'alert', title: '实时告警', subtitle: '异常情况立即推送，多端通知', desc: '随时随地掌握安全动态' },
   { icon: 'chart', title: '数据可视化', subtitle: '历史数据统计分析，趋势预测', desc: '助力科学决策与管理' },
-  { icon: 'shield', title: '稳定可靠', subtitle: '工业级设计，稳定运行', desc: '适应各种复杂环境' },
+  { icon: 'shield', title: '隐患闭环', subtitle: '上报、整改、复核全过程留痕', desc: '责任清晰，进度可追踪' },
 ]
 </script>
 
@@ -90,6 +91,7 @@ const FEATURES = [
             <span>多传感器</span>
             <span>3D 态势</span>
             <span>告警联动</span>
+            <span>隐患闭环</span>
           </div>
           <button type="button" class="hero-cta" @click="emit('navigate', 'monitor')">
             进入监控大屏 →

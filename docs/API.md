@@ -162,6 +162,29 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 
 `floorNo` 不得超过目标楼栋层数，`positionX`/`positionZ` 必须处于楼栋宽度和深度范围内。场景数据存储在 `map_building` 与 `device_map_position`；未配置位置的已绑定设备在首次读取场景时会自动获得模拟位置。
 
+## 隐患闭环
+
+- `GET /api/hazards?status=&priority=&page=1&pageSize=100`：分页查询隐患；居民只返回本人上报记录，消防员、小区管理员和系统管理员返回全部记录。
+- `GET /api/hazards/summary`：按同样可见范围返回 `reported`、`processing`、`pendingReview`、`closed` 和 `openTotal`。
+- `GET /api/hazards/{id}`：返回工单与按时间排序的 `actions` 流转记录；居民不能读取他人记录。
+- `POST /api/hazards`：所有已登录角色均可上报隐患。
+- `POST /api/hazards/{id}/claim`：消防员、小区管理员或系统管理员接单，状态从 `REPORTED` 进入 `PROCESSING`。
+- `POST /api/hazards/{id}/submit`：当前接单人或管理员提交整改结果，状态进入 `PENDING_REVIEW`。
+- `POST /api/hazards/{id}/review`：仅小区管理员或系统管理员复核；通过进入 `CLOSED`，驳回回到 `PROCESSING`。
+
+上报请求：
+
+```json
+{
+  "title": "消防通道堆放杂物",
+  "description": "2号楼5层西侧楼道堆放纸箱，影响疏散。",
+  "location": "2号楼5层西侧楼道",
+  "priority": "HIGH"
+}
+```
+
+`priority` 只能是 `LOW`、`MEDIUM`、`HIGH`、`URGENT`；`status` 只能是 `REPORTED`、`PROCESSING`、`PENDING_REVIEW`、`CLOSED`。提交整改使用 `{"resolution":"已清理纸箱并完成现场检查"}`；复核使用 `{"approved":true,"remark":"现场复核通过"}`。驳回时 `approved=false` 且 `remark` 必填。上报人、接单人、复核人与时间均由后端根据当前 JWT 和服务器时间写入，前端不能伪造。
+
 ## 数据接入
 
 - `POST /api/telemetry`：上报烟雾浓度和可选扩展传感器数据，同时刷新设备在线状态并执行多指标告警判断。

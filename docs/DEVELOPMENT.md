@@ -33,6 +33,7 @@ password=<空>
 mysql -uroot smart_smoke -e "SOURCE docs/migrations/20260826_decimal_concentration.sql"
 mysql -uroot smart_smoke -e "SOURCE docs/migrations/20260826_extended_sensor_metrics.sql"
 mysql -uroot smart_smoke -e "SOURCE docs/migrations/20260828_role_workspace_3d_map.sql"
+mysql -uroot smart_smoke -e "SOURCE docs/migrations/20260831_hazard_workflow.sql"
 ```
 
 这些迁移依次补齐数值精度、扩展传感器字段，以及 3D 楼栋/设备位置表。后端启动时 `FeatureSchemaInitializer` 也会兼容补齐地图表并初始化三栋模拟住宅楼；显式执行迁移便于部署审计和版本追踪。
