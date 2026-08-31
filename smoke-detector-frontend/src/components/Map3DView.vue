@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { MapBuilding, MapDevice, MapPositionPayload } from '@/api/types'
 import basementUtilityCorridorImage from '@/assets/corridor-cameras/basement-utility-corridor.jpg'
 import bicycleStorageCorridorImage from '@/assets/corridor-cameras/bicycle-storage-corridor.jpg'
@@ -118,6 +118,7 @@ const zoom = ref(1)
 const inspectedBuildingCode = ref('')
 const inspectedFloorNo = ref(1)
 const selectedCameraKey = ref<CameraKey>('corridor')
+const cameraPreviewOpen = ref(false)
 const selectedDeviceId = ref<number | null>(null)
 const editBuilding = ref('')
 const editFloor = ref(1)
@@ -446,6 +447,21 @@ function selectCamera(camera: CameraKey): void {
   selectedCameraKey.value = camera
 }
 
+function openCameraPreview(): void {
+  cameraPreviewOpen.value = true
+}
+
+function closeCameraPreview(): void {
+  cameraPreviewOpen.value = false
+}
+
+function handlePreviewKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape' && cameraPreviewOpen.value) closeCameraPreview()
+}
+
+onMounted(() => document.addEventListener('keydown', handlePreviewKeydown))
+onBeforeUnmount(() => document.removeEventListener('keydown', handlePreviewKeydown))
+
 function rotate(delta: number): void {
   rotation.value = (rotation.value + delta + 360) % 360
 }
@@ -724,12 +740,19 @@ watch(
               class="map3d-camera-frame"
               :class="{ 'map3d-camera-frame--warning': selectedCamera.key === 'warning' }"
             >
-              <img
-                :key="selectedCamera.code + ':' + selectedCamera.image"
-                :src="selectedCamera.image"
-                :alt="formatBuildingName(inspectedBuilding) + '第' + formatChineseNumber(inspectedFloorNo) + '层' + selectedCamera.label + '模拟画面'"
-                decoding="async"
-              />
+              <button
+                type="button"
+                class="map3d-camera-frame__trigger"
+                :aria-label="'放大查看' + formatBuildingName(inspectedBuilding) + '第' + formatChineseNumber(inspectedFloorNo) + '层' + selectedCamera.label + '模拟画面'"
+                @click="openCameraPreview"
+              >
+                <img
+                  :key="selectedCamera.code + ':' + selectedCamera.image"
+                  :src="selectedCamera.image"
+                  :alt="formatBuildingName(inspectedBuilding) + '第' + formatChineseNumber(inspectedFloorNo) + '层' + selectedCamera.label + '模拟画面'"
+                  decoding="async"
+                />
+              </button>
               <div class="map3d-camera-frame__top">
                 <span><i></i>模拟画面</span>
                 <time>{{ cameraTimestamp }}</time>
@@ -742,6 +765,7 @@ watch(
                 <span>{{ formatBuildingName(inspectedBuilding) }} · {{ inspectedFloorNo }}层 · {{ selectedCamera.label }}</span>
                 <span>{{ floorDevices.length }} 台感知设备</span>
               </figcaption>
+              <span class="map3d-camera-frame__expand" aria-hidden="true">⛶ 点击放大</span>
             </figure>
             <p class="map3d-camera-note">当前 19 个楼层的常规机位均使用独立 AI 生成图片；仅用于交互演示，尚未接入真实摄像头视频流。</p>
           </section>
@@ -817,5 +841,28 @@ watch(
         <div v-else class="map3d-empty">暂无可浏览的楼栋</div>
       </aside>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="cameraPreviewOpen && selectedCamera && inspectedBuilding"
+        class="map3d-camera-preview"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="selectedCamera.label + '放大画面'"
+        @click.self="closeCameraPreview"
+      >
+        <figure class="map3d-camera-preview__content">
+          <button type="button" class="map3d-camera-preview__close" aria-label="关闭放大画面" @click="closeCameraPreview">×</button>
+          <img
+            :src="selectedCamera.image"
+            :alt="formatBuildingName(inspectedBuilding) + '第' + formatChineseNumber(inspectedFloorNo) + '层' + selectedCamera.label + '放大画面'"
+          />
+          <figcaption>
+            <strong>{{ formatBuildingName(inspectedBuilding) }} · {{ inspectedFloorNo }}层 · {{ selectedCamera.label }}</strong>
+            <span>{{ selectedCamera.code }} · 点击空白区域或按 Esc 关闭</span>
+          </figcaption>
+        </figure>
+      </div>
+    </Teleport>
   </section>
 </template>
