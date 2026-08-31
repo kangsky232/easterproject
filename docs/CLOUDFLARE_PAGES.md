@@ -1,16 +1,18 @@
 # Cloudflare Pages 与本机后端联调
 
-更新日期：2026-08-28。
+更新日期：2026-08-31。
 
 当前演示架构为：Vue 前端部署到 Cloudflare Pages，Spring Boot 与 MySQL 运行在开发者电脑上，Cloudflare Named Tunnel 使用固定域名把公网 HTTPS 请求转发到本机后端。
 
 | 组件 | 当前地址 |
 | --- | --- |
-| Web 前端 | `https://easterproject.pages.dev` |
-| 公网后端 | `https://api.kangroom.eu.cc` |
+| Web 前端 | [https://easterproject.pages.dev](https://easterproject.pages.dev) |
+| 公网后端 | [https://api.kangroom.eu.cc](https://api.kangroom.eu.cc) |
 | 本机后端 | `http://127.0.0.1:8080` |
 
 Named Tunnel 重启后不会产生新地址，因此正常重启服务无需修改 Pages 环境变量。不过电脑关机、MySQL/后端退出、网络中断或 `cloudflared` 停止，仍会让前端显示“后端断开连接”。这是一套固定地址的演示架构，不是高可用生产部署。
+
+2026-08-31 最近一次联调快照中，Pages 和公网健康检查可访问，后端/MySQL 为 `UP`，MQTT 为 `CONNECTED`，视觉 AI 为 `NOT_CONNECTED`，知识库为 `FALLBACK_ONLY`，广播为 `DINGTALK_SINGLE_CHAT`。这些状态会随本机进程和外部服务变化，应在每次演示前重新验证。
 
 ## Pages 构建配置
 
@@ -32,10 +34,11 @@ Named Tunnel 重启后不会产生新地址，因此正常重启服务无需修�
 在仓库根目录运行：
 
 ```powershell
+$env:CORS_ALLOWED_ORIGINS = 'https://easterproject.pages.dev'
 .\scripts\start-backend.ps1
 ```
 
-该脚本会加载 Git 忽略的 `.env.mqtt.local` 和 `.env.dingtalk.local`，再启动 Spring Boot。不要把真实 Client Secret 或 MQTT 凭据提交到 Git。
+该脚本只会加载 Git 忽略的 `.env.mqtt.local` 和 `.env.dingtalk.local`，再启动 Spring Boot；上面的 CORS 变量需在同一个 PowerShell 进程中先设置，或由 IDE/进程管理器注入。不要把真实 Client Secret 或 MQTT 凭据提交到 Git。
 
 验证本机接口：
 

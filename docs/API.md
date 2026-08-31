@@ -1,6 +1,6 @@
 # 后端接口
 
-更新日期：2026-08-26。开发环境可通过 `/swagger-ui.html` 查看由代码生成的 OpenAPI 文档；本文件记录业务语义和协作约定。
+更新日期：2026-08-31。开发环境可通过 `/swagger-ui.html` 查看由代码生成的 OpenAPI 文档；本文件记录业务语义和协作约定。
 
 统一响应格式：
 
@@ -10,7 +10,7 @@
 
 业务错误通过对应的 HTTP `4xx/5xx` 状态返回，响应体同时包含非零 `code` 和 `message`。
 
-常见状态：`400` 参数错误、`401` 未登录或会话失效、`403` 权限不足、`404` 用户不存在、`409` 状态冲突、`503` 依赖服务不可用。前端必须同时判断 HTTP 状态和响应体 `code`。仅当部署方主动启用登录限流时，登录接口才可能返回 `429`。
+常见状态：`400` 参数错误、`401` 未登录或会话失效、`403` 权限不足、`404` 资源不存在、`409` 状态冲突、`503` 依赖服务不可用。前端必须同时判断 HTTP 状态和响应体 `code`。仅当部署方主动启用登录限流时，登录接口才可能返回 `429`。
 
 除健康检查、系统能力、登录、设备遥测和心跳外，其余接口需要请求头：
 
@@ -25,7 +25,7 @@ Authorization: Bearer <token>
 ## 系统
 
 - `GET /api/health`：健康检查，会执行 `SELECT 1` 验证 MySQL；数据库不可用时返回 HTTP `503`。
-- `GET /api/system/capabilities`：查询存储、设备接入、MQTT、AI、知识库和广播模块的当前接入状态；知识库状态来自实时 RAG 健康探测，运行模式来自 Spring Profile。
+- `GET /api/system/capabilities`：查询存储、设备接入、MQTT、AI、知识服务和广播模块的当前接入状态；`knowledgeBase=CONNECTED` 只表示 RAG Flask 健康接口可达，返回的提供方/模型名也是服务配置标签，并不证明 Ollama 已完成一次推理。运行模式来自 Spring Profile。
 - `GET /api/dashboard/overview`：设备总数、在线数、离线数和活动告警数。
 
 本地前端开发地址 `http://localhost:5173`、`http://127.0.0.1:5173`、`http://localhost:5174` 和 `http://127.0.0.1:5174` 已允许跨域访问 `/api/**`。
@@ -200,6 +200,8 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 
 设置 `MQTT_ENABLED=true` 后，后端会连接配置的 Broker 并订阅 `MQTT_TOPIC`。当前适配器用于接收华为云 IoTDA 规则转发消息，解析 `Smoke_Value`、`Temperature`、`Humidity`、`Current`、`WireTemperature`、`CO_Value` 和 `BeepStatus`，再复用同一遥测服务完成入库、在线状态和多指标告警判断。详细 payload、凭据和 Instance ID 说明见 [硬件接入文档](../hardware/README.md)。
 
+HTTP 的幂等依赖调用方重试时复用 `messageId`。MQTT 订阅器目前为每次接收生成 `设备号:当前时间戳`，QoS 1 消息被 Broker 重投时可能重复入库，不能把 HTTP 的幂等承诺扩展到 MQTT。
+
 `GET /api/system/capabilities` 中的 `mqtt=CONNECTED` 只说明后端订阅连接正常，不代表设备仍在上报。设备在线状态以最后心跳/遥测时间为准。
 
 ## 告警
@@ -229,6 +231,8 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 
 ## 广播
 
+消防员、小区管理员和系统管理员可读取、创建和再次下发广播；删除记录和手工更新状态仅小区管理员、系统管理员可用。
+
 - `GET /api/broadcasts`：消防员、小区管理员、系统管理员分页查询广播指令。
 - `GET /api/broadcasts/{id}`：消防员、小区管理员、系统管理员查询单条广播指令。
 - `POST /api/broadcasts`：创建待下发广播指令。
@@ -252,8 +256,9 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 {"status": 1}
 ```
 
-当前只完成广播指令的持久化和状态流转，真实 MQTT 发布将在接入 Broker 后由适配器消费待下发记录。
-因此 `POST` 成功仅表示指令记录已创建，不表示目标设备已收到或播放。
+创建广播时会先保存 `PENDING` 记录；如果钉钉已配置，后端会立即尝试向全部启用且已绑定的员工单聊投递，并把记录更新为成功或失败；如果钉钉未配置，记录保持待下发。`/deliver` 用于再次执行同一钉钉投递流程。
+
+MQTT 设备下行仍未实现。因此广播状态成功只表示钉钉单聊投递调用成功，不表示目标烟感设备已收到或播放；删除数据库记录也不会撤回已送达的钉钉消息。
 
 ## 告警复核与误报
 
@@ -274,7 +279,7 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 
 ## 智能问答
 
-- `POST /api/chat`：按本地安全知识库和当前告警上下文回答问题。RAG 服务通过 Ollama 调用 `gpt-oss:120b-cloud`；模型或服务不可用时分层回退到本地安全规则。
+- `POST /api/chat`：按本地安全知识库和当前告警上下文回答问题。RAG 服务可通过 Ollama 调用 `gpt-oss:120b-cloud`；模型或服务不可用时分层回退到本地安全规则。`knowledgeBase` 只能判断 RAG 服务是否可达，单次回答是否实际经过 Ollama 应查看响应 `source=OLLAMA`。
 
 ```json
 {"question": "发生火情后怎么疏散？", "alertId": 1}

@@ -1,8 +1,8 @@
 # 部署说明（上线前准备）
 
-更新日期：2026-08-28。
+更新日期：2026-08-31。
 
-> 当前仓库已提供生产配置、容器编排和 HTTPS 反向代理模板。演示环境使用 Cloudflare Pages + 本机 Named Tunnel，后端固定域名为 `https://api.kangroom.eu.cc`。固定域名解决了重启后地址变化问题，但本机仍是单点，不能视为正式生产上线。
+> 当前仓库已提供生产配置、容器编排和 HTTPS 反向代理模板。演示环境使用 Cloudflare Pages + 本机 Named Tunnel，前端为 [https://easterproject.pages.dev](https://easterproject.pages.dev)，后端固定域名为 [https://api.kangroom.eu.cc](https://api.kangroom.eu.cc)。固定域名解决了重启后地址变化问题，但本机仍是单点，不能视为正式生产上线。
 
 ## 已完成的生产化约束
 
@@ -10,7 +10,7 @@
 - 设备遥测、心跳在生产环境必须携带 `X-Device-Token`；数据库仅保存令牌摘要。
 - MySQL、EMQX、RAG 和后端只加入内部 Docker 网络，不映射宿主机端口。
 - 静态前端通过内部 Nginx 反向代理 `/api` 到后端；公网只需要暴露前端入口。
-- API 审计日志不会写入请求体、JWT 或设备令牌。登录失败在单实例中会按客户端地址限流；容器网络中仅信任内部前端代理传递的客户端地址。
+- API 审计日志不会写入请求体、JWT 或设备令牌。可通过 `LOGIN_RATE_LIMIT_ENABLED=true` 在单实例中按客户端地址启用登录失败限流；容器网络中仅信任内部前端代理传递的客户端地址。
 
 ## 部署前仍需确定
 
@@ -23,8 +23,9 @@
 - 至少保留一个已验证可登录的系统管理员，且 `BOOTSTRAP_ADMIN_ENABLED=false`。
 - 完成 MySQL 备份和恢复演练，明确日志轮转、监控和告警接收人。
 - 真实 SMS、APP 推送、MQTT 或视觉服务未接入时，在产品界面明确标注不可用或模拟状态。
+- RAG 镜像当前使用 Flask 开发服务器；正式部署前改为 Gunicorn 等生产 WSGI 服务，并配置并发、超时、优雅退出和健康检查。
 - 使用 HTTPS 域名验证登录、改密后旧 Token 失效、角色权限、设备令牌、告警全流程和错误响应。
-- 已有数据库执行 `docs/migrations/20260826_decimal_concentration.sql`，并验证小数浓度入库、查询、趋势聚合和告警记录。
+- 已有数据库按版本依次执行 `docs/migrations/20260826_decimal_concentration.sql`、`docs/migrations/20260826_extended_sensor_metrics.sql` 和 `docs/migrations/20260828_role_workspace_3d_map.sql`，并验证小数与扩展遥测、趋势聚合、告警、角色工作区及 3D 地图位置。
 
 ## Cloudflare Pages 演示部署
 

@@ -1,8 +1,8 @@
 # 视觉复核服务占位说明
 
-更新日期：2026-08-24。
+更新日期：2026-08-31。
 
-`ai-vision` 当前只是 Flask 接口骨架，`POST /api/vision/verify` 返回 `data: null`，没有加载 YOLO 权重、读取摄像头或执行烟火识别。它未接入当前 Spring Boot 告警流程，也不应作为生产视觉能力展示。
+`ai-vision` 当前只是 Flask 接口骨架，`POST /api/vision/verify` 无论请求内容都会返回 `data: null`，没有加载 YOLO 权重、读取摄像头或执行烟火识别。它没有健康检查、鉴权、输入校验或测试，也未加入根目录 `docker-compose.yml`，未接入当前 Spring Boot 告警流程，不应作为生产视觉能力展示。依赖文件中虽列有 OpenCV、Ultralytics 和 NumPy，当前代码并未调用它们。
 
 仅验证占位服务时可运行：
 

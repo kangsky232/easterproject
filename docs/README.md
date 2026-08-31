@@ -1,6 +1,6 @@
 # 文档索引
 
-更新日期：2026-08-28。
+更新日期：2026-08-31。
 
 - [DEVELOPMENT.md](DEVELOPMENT.md)：本地环境、非 Docker 启动、配置、测试与常见问题。
 - [API.md](API.md)：后端接口、请求示例、权限和错误处理。
@@ -16,6 +16,8 @@
 - [migrations/20260828_role_workspace_3d_map.sql](migrations/20260828_role_workspace_3d_map.sql)：新增模拟楼栋、设备楼层/房间/坐标并为已有设备分配默认位置。
 - [硬件说明](../hardware/README.md)：设备上报方式和 MQTT 主题约定。
 - [视觉服务说明](../ai-vision/README.md)：当前占位接口和正式接入条件。
+- [前端说明](../smoke-detector-frontend/README.md)：当前页面结构、登录存储、小窗问答、3D 地图与构建方式。
+- [RAG 服务说明](../rag-service/README.md)：领域过滤、本地知识回退与 Ollama 调用边界。
 
 开发环境启动后还可访问动态 OpenAPI 文档：`http://127.0.0.1:8080/swagger-ui.html`。
 

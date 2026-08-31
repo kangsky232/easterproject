@@ -1,8 +1,10 @@
 # 设备与硬件接入说明
 
-更新日期：2026-08-26。
+更新日期：2026-08-31。
 
 当前仓库尚未包含可直接烧录的 ESP8266、STM32 或小熊派固件。后端支持两条入站链路：设备直接调用 HTTP 接口，以及订阅华为云 IoTDA 规则引擎转发到 MQTT Broker 的消息。MQTT 入站已经实现，MQTT 广播下发尚未实现。
+
+2026-08-31 联调时 `/api/system/capabilities` 返回 `mqtt=CONNECTED`，只代表后端当时连接到了 Broker；这是瞬时状态，不代表设备持续上报，也不保证下次启动仍然连接。
 
 ## 当前可用：HTTP 接入
 
@@ -103,11 +105,13 @@ IoTDA 规则引擎把设备属性消息转发到 MQTT 后，Spring Boot 使用�
 
 数值字段入库时保留两位小数，遥测同时作为设备在线心跳。属性单位以华为云产品模型中的定义为准；项目不自动猜测 `Current` 和 `CO_Value` 的单位。`GET /api/system/capabilities` 中的 `mqtt=CONNECTED` 只说明后端已连接 Broker，不代表硬件正在上报；是否在线应查看设备的 `lastHeartbeat` 和最新数据时间。
 
+MQTT 使用 QoS 1，但当前订阅器为每次收到的消息生成 `设备号:当前时间戳` 作为内部 `messageId`。Broker 重投同一 payload 时可能重复入库；HTTP 调用方复用 `messageId` 的幂等保证不适用于当前 MQTT 适配器。
+
 旧版本曾把 `Smoke_Value` 强制转换为整数，因此历史记录中已经丢失的小数无法恢复。升级已有数据库时依次执行 `docs/migrations/20260826_decimal_concentration.sql` 和 `docs/migrations/20260826_extended_sensor_metrics.sql`。
 
 ## 尚未实现：MQTT 下行
 
-广播记录目前只写入数据库，不会通过 MQTT 发布给设备。正式下行还需定义命令主题、QoS、保留消息、离线队列、重放幂等、设备回执和超时策略。
+广播不会通过 MQTT 发布给设备。未配置钉钉时只保存数据库记录；配置钉钉并绑定员工后，网页广播会尝试发送到员工单聊，但这仍不代表烟感设备收到或播放。正式设备下行还需定义命令主题、QoS、保留消息、离线队列、重放幂等、设备回执和超时策略。
 
 ## 安全要求
 

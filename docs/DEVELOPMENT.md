@@ -1,6 +1,6 @@
 # 本地开发说明
 
-更新日期：2026-08-27。本说明以 Windows PowerShell 为例，默认采用非 Docker 启动方式。
+更新日期：2026-08-31。本说明以 Windows PowerShell 为例，默认采用非 Docker 启动方式。
 
 ## 组件与依赖
 
@@ -66,6 +66,8 @@ npm install
 npm run dev
 ```
 
+在 Windows PowerShell 中如果 `npm.ps1` 被执行策略拦截，可把上面两条命令改为 `npm.cmd install` 和 `npm.cmd run dev`。
+
 Vite 会把 `/api` 代理到 `http://127.0.0.1:8080`。浏览器访问终端中显示的地址，通常是 `http://127.0.0.1:5173`。
 
 ## 4. 可选服务
@@ -82,7 +84,7 @@ MQTT 不影响登录、数据库接口和前端基本联调。需要接入华为
 
 订阅器接收 `Smoke_Value`、`Temperature`、`Humidity`、`Current`、`WireTemperature`、`CO_Value` 和 `BeepStatus`，数值按两位小数入库。详细 payload 和配置见 [硬件与 MQTT 说明](../hardware/README.md)。MQTT 设备下行尚未实现；网页广播可通过钉钉机器人发送给手机端员工。
 
-钉钉接入使用 Stream 模式，无需填写公网回调地址。在 `.env.dingtalk.local` 中设置 `DINGTALK_ENABLED=true`、Client ID 和 Client Secret，再用上面的启动脚本运行后端。每名接收人需要先在钉钉中私聊机器人一次；机器人回复“连接成功”后，其员工 userId 会写入 `dingtalk_recipient`，网页广播和新产生的传感器告警会发送到该单聊。真实 Client Secret 不得提交到 Git。
+钉钉接入使用 Stream 模式，无需填写公网回调地址。在 `.env.dingtalk.local` 中设置 `DINGTALK_ENABLED=true`、Client ID 和 Client Secret，再用上面的启动脚本运行后端。每名接收人需要先在钉钉中私聊机器人一次；机器人回复“连接成功”后，其员工 userId 会写入 `dingtalk_recipient`，网页广播和新产生的传感器告警会发送到启用状态的绑定用户单聊。真实 Client Secret 不得提交到 Git。
 
 ## 开发账号
 
@@ -142,8 +144,9 @@ mvn "-Dmaven.repo.local=$taskMavenRepo" test
 cd ../smoke-detector-frontend
 npm run build
 
-# RAG 服务语法检查
+# RAG 服务单元测试与语法检查
 cd ../rag-service
+python -m unittest discover -v
 python -m py_compile app.py
 ```
 
@@ -151,6 +154,7 @@ python -m py_compile app.py
 
 - 后端报 `Communications link failure`：先确认 `127.0.0.1:3306` 正在监听，再检查数据库名和账号密码。
 - 登录一直失败：确认前端请求的是当前后端，并查询数据库中的实际账号状态；已有数据库不会自动恢复默认密码。
+- 同一浏览器的两个页签不能保持两个不同账号：当前前端使用同源 `localStorage` 键 `smart-smoke.token`、`smart-smoke.user`，后登录会覆盖前一个账号。并行验收角色时使用普通窗口与无痕窗口、不同浏览器或不同浏览器配置文件。
 - 前端启动到 `5174`：说明 `5173` 已被占用，属于 Vite 的正常行为，后端开发 CORS 已允许两个端口。
 - MQTT 连接失败：本地核心接口仍可使用；只有真实 MQTT 收发需要启动 Broker。
 - 钉钉机器人不回复：确认应用已经发布、消息接收模式为 Stream、环境变量已加载，并在启动日志中查找 `DingTalk Stream listener started`。
