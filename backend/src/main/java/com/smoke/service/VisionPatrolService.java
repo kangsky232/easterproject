@@ -50,14 +50,25 @@ public class VisionPatrolService {
     private volatile VisionFrameResponse currentFrame;
     private volatile VisionAnalysisResponse latestAnalysis;
     private volatile Long latestEventId;
+    private volatile boolean patrolRunning;
     private volatile boolean scanning;
 
     @Scheduled(
             fixedDelayString = "${app.vision.interval-ms:15000}",
             initialDelayString = "${app.vision.initial-delay-ms:3000}")
-    public void scheduledScan() {
-        if (!properties.isEnabled()) return;
+    public synchronized void scheduledScan() {
+        if (!properties.isEnabled() || !patrolRunning) return;
         analyzeNextFrame();
+    }
+
+    public synchronized VisionStatusResponse startPatrol() {
+        if (properties.isEnabled()) patrolRunning = true;
+        return status();
+    }
+
+    public synchronized VisionStatusResponse pausePatrol() {
+        patrolRunning = false;
+        return status();
     }
 
     public synchronized VisionStatusResponse analyzeNextFrame() {
@@ -91,6 +102,7 @@ public class VisionPatrolService {
                 : toResponse(visionEventMapper.selectById(latestEventId));
         return new VisionStatusResponse(
                 properties.isEnabled(),
+                patrolRunning,
                 scanning,
                 properties.isDeepSeekConfigured(),
                 capability(),

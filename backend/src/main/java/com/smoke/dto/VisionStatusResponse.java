@@ -2,6 +2,7 @@ package com.smoke.dto;
 
 public record VisionStatusResponse(
         boolean enabled,
+        boolean running,
         boolean scanning,
         boolean deepSeekConfigured,
         String mode,

@@ -125,6 +125,14 @@ export function analyzeNextVisionFrame(): Promise<VisionStatus> {
   return api('/api/vision/simulation/next', { method: 'POST' })
 }
 
+export function startVisionPatrol(): Promise<VisionStatus> {
+  return api('/api/vision/patrol/start', { method: 'POST' })
+}
+
+export function pauseVisionPatrol(): Promise<VisionStatus> {
+  return api('/api/vision/patrol/pause', { method: 'POST' })
+}
+
 export function reviewVisionEvent(
   id: number,
   verdict: VisionReviewVerdict,

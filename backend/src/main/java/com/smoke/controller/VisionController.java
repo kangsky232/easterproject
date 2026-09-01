@@ -44,6 +44,16 @@ public class VisionController {
         return Result.ok(visionPatrolService.analyzeNextFrame());
     }
 
+    @PostMapping("/patrol/start")
+    public Result<?> startPatrol() {
+        return Result.ok(visionPatrolService.startPatrol());
+    }
+
+    @PostMapping("/patrol/pause")
+    public Result<?> pausePatrol() {
+        return Result.ok(visionPatrolService.pausePatrol());
+    }
+
     @PostMapping("/events/{id}/review")
     public Result<?> review(
             @PathVariable Long id,

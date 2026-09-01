@@ -2,7 +2,7 @@
 
 更新日期：2026-09-01。
 
-当前可用的 AI 视觉巡检闭环直接实现在 Spring Boot `backend` 与 Vue 主前端中，不依赖本目录。它会对 15 张模拟社区监控图进行洗牌式随机轮换（10 张正常、5 张疑似烟火）；配置 `DEEPSEEK_API_KEY` 后通过 DeepSeek OpenAI 兼容的 Chat Completions 图片输入调用 `deepseek-v4-flash-vision-exp`，未配置 Key 时使用明确标记的内置模拟规则。
+当前可用的 AI 视觉巡检闭环直接实现在 Spring Boot `backend` 与 Vue 主前端中，不依赖本目录。服务启动后默认暂停，由有权限的工作人员在 3D 社区页手动开始或暂停；运行时会对 15 张模拟社区监控图进行洗牌式随机轮换（10 张正常、5 张疑似烟火），暂停后不再自动分析或发送新的钉钉告警。配置 `DEEPSEEK_API_KEY` 后通过 DeepSeek OpenAI 兼容的 Chat Completions 图片输入调用 `deepseek-v4-flash-vision-exp`，未配置 Key 时使用明确标记的内置模拟规则。
 
 疑似火情达到置信度阈值后会写入 `vision_event`，向已启用且已绑定的钉钉员工发送“待人工核查”单聊，并由消防员、小区管理员或系统管理员在 Web 端一次性提交“确认为火情”或“排除误报”及判断依据。模型与模拟规则都不能自动给出最终处置结论。
 

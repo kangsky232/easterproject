@@ -86,6 +86,27 @@ async function analyzeNext(): Promise<void> {
   }
 }
 
+async function setPatrolRunning(running: boolean): Promise<void> {
+  if (actionBusy.value || status.value?.running === running) return
+  actionBusy.value = true
+  try {
+    status.value = running
+      ? await api.startVisionPatrol()
+      : await api.pauseVisionPatrol()
+    await load()
+    store.showToast(
+      running
+        ? 'AI 视觉巡检已开始，系统将按周期识别并在发现疑似火情时推送钉钉。'
+        : 'AI 视觉巡检已暂停，不会继续自动识别或发送新的钉钉告警。',
+      'success',
+    )
+  } catch (error) {
+    store.showToast(`巡检状态切换失败：${(error as Error).message}`, 'error')
+  } finally {
+    actionBusy.value = false
+  }
+}
+
 function openReview(event: VisionEvent, verdict: VisionReviewVerdict): void {
   reviewTargetId.value = event.id
   reviewVerdict.value = verdict
@@ -132,12 +153,18 @@ onBeforeUnmount(() => window.clearInterval(pollTimer))
       <div>
         <span class="role-workspace__eyebrow">AI LIVE VISION PATROL</span>
         <h3>AI 视觉实时巡检</h3>
-        <p>15 张模拟监控画面随机轮换，疑似火灾实时建档并推送钉钉，最终由工作人员判断。</p>
+        <p>手动开始后随机轮换 15 张模拟监控画面，疑似火灾建档并推送钉钉，暂停后停止自动识别。</p>
       </div>
       <div class="vision-patrol__head-actions">
-        <span class="vision-patrol__live" :class="{ scanning: status?.scanning }"><i></i>{{ status?.scanning ? 'AI 分析中' : '实时巡检中' }}</span>
-        <button v-if="store.canReviewVision" type="button" class="btn-ghost" :disabled="actionBusy" @click="analyzeNext">
-          {{ actionBusy ? '分析中…' : '立即分析下一帧' }}
+        <span class="vision-patrol__live" :class="{ scanning: status?.scanning, paused: !status?.running }"><i></i>{{ status?.scanning ? 'AI 分析中' : status?.running ? '巡检运行中' : '巡检已暂停' }}</span>
+        <button v-if="store.canReviewVision && !status?.running" type="button" class="btn-primary" :disabled="actionBusy || !status?.enabled" @click="setPatrolRunning(true)">
+          {{ actionBusy ? '处理中…' : '开始巡检' }}
+        </button>
+        <button v-if="store.canReviewVision && status?.running" type="button" class="btn-ghost" :disabled="actionBusy" @click="setPatrolRunning(false)">
+          {{ actionBusy ? '处理中…' : '暂停巡检' }}
+        </button>
+        <button v-if="store.canReviewVision && status?.running" type="button" class="btn-ghost" :disabled="actionBusy" @click="analyzeNext">
+          {{ actionBusy ? '处理中…' : '立即分析下一帧' }}
         </button>
       </div>
     </div>
@@ -147,8 +174,9 @@ onBeforeUnmount(() => window.clearInterval(pollTimer))
     <template v-else>
       <div class="vision-patrol__mode" :class="{ fallback: !status?.deepSeekConfigured }">
         <strong>{{ modeLabel }}</strong>
-        <span>15 张画面随机不重复一轮 · 每 {{ Math.round((status?.intervalMs ?? 15000) / 1000) }} 秒分析一帧</span>
-        <small v-if="!status?.deepSeekConfigured">配置 DEEPSEEK_API_KEY 后自动切换为真实图片模型分析；当前结果来自预设演示规则。</small>
+        <span>15 张画面随机不重复一轮 · {{ status?.running ? `每 ${Math.round((status?.intervalMs ?? 15000) / 1000)} 秒分析一帧` : '自动识别已暂停' }}</span>
+        <small v-if="!status?.running">暂停期间不会自动分析，也不会产生新的钉钉告警。</small>
+        <small v-else-if="!status?.deepSeekConfigured">配置 DEEPSEEK_API_KEY 后自动切换为真实图片模型分析；当前结果来自预设演示规则。</small>
         <small v-else>图片正通过 DeepSeek Vision 分析；模型输出仍须人工现场核验。</small>
       </div>
 

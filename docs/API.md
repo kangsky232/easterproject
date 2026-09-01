@@ -164,10 +164,12 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 
 ## AI 视觉实时巡检
 
-- `GET /api/vision/status`：返回巡检开关、当前是否分析、DeepSeek 是否配置、运行模式、模型、轮换周期、阈值、当前模拟帧、最近分析和最近事件。
+- `GET /api/vision/status`：返回功能开关 `enabled`、自动巡检状态 `running`、当前是否正在分析 `scanning`、DeepSeek 是否配置、运行模式、模型、轮换周期、阈值、当前模拟帧、最近分析和最近事件。
 - `GET /api/vision/events?status=&page=1&pageSize=50`：分页查询视觉事件；`status` 可选 `PENDING_REVIEW`、`CONFIRMED_FIRE`、`FALSE_ALARM`。
 - `GET /api/vision/summary`：返回待人工判断、已确认为火情、已排除误报和总事件数。
 - `POST /api/vision/simulation/next`：立即分析下一张模拟帧；仅消防员、小区管理员和系统管理员可用。
+- `POST /api/vision/patrol/start`：开启自动巡检；重复调用保持运行状态，不额外触发分析。
+- `POST /api/vision/patrol/pause`：暂停自动巡检；接口返回后不会继续开始新的自动分析或发送新的识别告警。
 - `POST /api/vision/events/{id}/review`：人工提交一次性结论；仅消防员、小区管理员和系统管理员可用。
 
 复核请求：
@@ -181,7 +183,7 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 
 `verdict` 仅支持 `CONFIRMED_FIRE` 与 `FALSE_ALARM`，`remark` 必填且最多 500 字。后端从 JWT 写入复核账号与服务器时间；已复核事件再次提交返回 `409`，不能覆盖原结论。
 
-后端默认每 15 秒从 15 张静态模拟图片中洗牌式随机取一张：每轮全部出现一次，跨轮相邻画面也不会重复；素材包含 10 张正常和 5 张疑似烟火。配置 `DEEPSEEK_API_KEY` 后，请求以外部 HTTPS 图片 URL 发送到 DeepSeek `deepseek-v4-flash-vision-exp`；未配置时分析结果的 `mode` 为 `SIMULATION_FALLBACK`，配置后调用失败则为 `DEEPSEEK_ERROR`，失败帧不会创建疑似事件。模型或模拟规则只有在 `suspectedFire=true` 且 `confidence` 达到阈值时才建档；同一机位已有待复核事件时不会重复建档或重复推送。
+后端进程启动后自动巡检默认暂停，必须先调用开始接口；运行期间每 15 秒从 15 张静态模拟图片中洗牌式随机取一张，每轮全部出现一次，跨轮相邻画面也不会重复；素材包含 10 张正常和 5 张疑似烟火。暂停只阻止自动巡检，显式调用 `simulation/next` 仍会按人工指令分析一帧。配置 `DEEPSEEK_API_KEY` 后，请求以外部 HTTPS 图片 URL 发送到 DeepSeek `deepseek-v4-flash-vision-exp`；未配置时分析结果的 `mode` 为 `SIMULATION_FALLBACK`，配置后调用失败则为 `DEEPSEEK_ERROR`，失败帧不会创建疑似事件。模型或模拟规则只有在 `suspectedFire=true` 且 `confidence` 达到阈值时才建档；同一机位已有待复核事件时不会重复建档或重复推送。
 
 事件的 `dingtalkStatus` 为 `PENDING`、`SENT`、`FAILED` 或 `SKIPPED`，并保存成功接收人数或失败原因。钉钉消息会明确注明画面来自模拟轮播、不是现场摄像头；人工复核后会再发送结果通知。AI 结果只用于提示和分流，不能自动替代现场核验、119 报警或法定消防设施。
 

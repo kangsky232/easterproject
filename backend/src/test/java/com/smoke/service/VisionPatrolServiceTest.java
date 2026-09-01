@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -19,9 +20,35 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class VisionPatrolServiceTest {
+
+    @Test
+    void automaticPatrolStartsPausedAndStopsScanningAfterPause() {
+        VisionProperties properties = new VisionProperties();
+        DeepSeekVisionClient client = mock(DeepSeekVisionClient.class);
+        VisionEventMapper mapper = mock(VisionEventMapper.class);
+        DingTalkMessageService dingTalk = mock(DingTalkMessageService.class);
+        VisionPatrolService service = new VisionPatrolService(properties, client, mapper, dingTalk);
+        VisionAnalysisResult normal = new VisionAnalysisResult(
+                false, 0.10D, "LOW", "正常", "未见烟火", "SIMULATION_FALLBACK",
+                "built-in-scenario-rules", null);
+        when(client.analyze(any())).thenReturn(normal);
+
+        assertFalse(service.status().running());
+        service.scheduledScan();
+        verifyNoInteractions(client);
+
+        assertTrue(service.startPatrol().running());
+        service.scheduledScan();
+        verify(client).analyze(any());
+
+        assertFalse(service.pausePatrol().running());
+        service.scheduledScan();
+        verify(client, times(1)).analyze(any());
+    }
 
     @Test
     void suspiciousFrameCreatesPendingEventAndSendsDingTalkAlert() {

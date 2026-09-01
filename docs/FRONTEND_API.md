@@ -182,13 +182,15 @@ Authorization: Bearer <token>
 
 | 方法 | 路径 | 权限 | 用途 |
 | --- | --- | --- | --- |
-| GET | `/api/vision/status` | 已登录 | 当前模拟帧、最近分析、模型/降级状态 |
+| GET | `/api/vision/status` | 已登录 | 自动巡检运行状态、当前模拟帧、最近分析、模型/降级状态 |
 | GET | `/api/vision/events?status=&page=1&pageSize=50` | 已登录 | 视觉事件分页 |
 | GET | `/api/vision/summary` | 已登录 | 待判断、已确认、已排除统计 |
 | POST | `/api/vision/simulation/next` | 消防员、小区管理员、系统管理员 | 手动分析下一帧 |
+| POST | `/api/vision/patrol/start` | 消防员、小区管理员、系统管理员 | 开始自动巡检 |
+| POST | `/api/vision/patrol/pause` | 消防员、小区管理员、系统管理员 | 暂停自动巡检和后续自动告警 |
 | POST | `/api/vision/events/{id}/review` | 消防员、小区管理员、系统管理员 | 提交人工结论 |
 
-`VisionStatus` 的 `deepSeekConfigured` 决定前端展示“DeepSeek”还是“模拟规则降级”。单帧 `latestAnalysis.mode` 还可能为 `DEEPSEEK_ERROR`；此时必须显示错误，不能展示为安全结论。`currentFrame.frameKey` 对应前端内置演示图片，`imageUrl` 是 DeepSeek 可访问的 Pages 图片地址。
+`VisionStatus.running` 决定前端展示“巡检运行中”还是“巡检已暂停”；后端每次启动时该值默认 `false`。`deepSeekConfigured` 决定前端展示“DeepSeek”还是“模拟规则降级”。单帧 `latestAnalysis.mode` 还可能为 `DEEPSEEK_ERROR`；此时必须显示错误，不能展示为安全结论。`currentFrame.frameKey` 对应模拟图片键，`imageUrl` 是 DeepSeek 可访问的 Pages 图片地址。
 
 事件状态为 `PENDING_REVIEW`、`CONFIRMED_FIRE`、`FALSE_ALARM`；复核请求为 `{"verdict":"CONFIRMED_FIRE","remark":"现场核验依据"}`。拥有 `VISION_REVIEW` 权限的账号显示“立即分析下一帧”和复核按钮，居民只能查看。提交成功后刷新事件与统计；后端返回 `409` 时说明其他工作人员已先完成判断，不能覆盖原结论。
 

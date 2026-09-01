@@ -158,6 +158,7 @@ export interface VisionEvent {
 
 export interface VisionStatus {
   enabled: boolean
+  running: boolean
   scanning: boolean
   deepSeekConfigured: boolean
   mode: string
