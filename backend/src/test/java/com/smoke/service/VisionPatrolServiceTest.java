@@ -28,6 +28,7 @@ class VisionPatrolServiceTest {
     @Test
     void automaticPatrolStartsPausedAndStopsScanningAfterPause() {
         VisionProperties properties = new VisionProperties();
+        properties.setIntervalMs(0L);
         DeepSeekVisionClient client = mock(DeepSeekVisionClient.class);
         VisionEventMapper mapper = mock(VisionEventMapper.class);
         DingTalkMessageService dingTalk = mock(DingTalkMessageService.class);
@@ -41,13 +42,20 @@ class VisionPatrolServiceTest {
         service.scheduledScan();
         verifyNoInteractions(client);
 
+        var started = service.startPatrol();
+        assertTrue(started.running());
+        assertNotNull(started.currentFrame());
+        verify(client, times(1)).analyze(any());
+
         assertTrue(service.startPatrol().running());
+        verify(client, times(1)).analyze(any());
+
         service.scheduledScan();
-        verify(client).analyze(any());
+        verify(client, times(2)).analyze(any());
 
         assertFalse(service.pausePatrol().running());
         service.scheduledScan();
-        verify(client, times(1)).analyze(any());
+        verify(client, times(2)).analyze(any());
     }
 
     @Test

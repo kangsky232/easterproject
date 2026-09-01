@@ -72,20 +72,6 @@ async function load(showError = false): Promise<void> {
   }
 }
 
-async function analyzeNext(): Promise<void> {
-  if (actionBusy.value) return
-  actionBusy.value = true
-  try {
-    status.value = await api.analyzeNextVisionFrame()
-    await load()
-    store.showToast('已完成下一帧视觉分析。', 'success')
-  } catch (error) {
-    store.showToast(`视觉分析失败：${(error as Error).message}`, 'error')
-  } finally {
-    actionBusy.value = false
-  }
-}
-
 async function setPatrolRunning(running: boolean): Promise<void> {
   if (actionBusy.value || status.value?.running === running) return
   actionBusy.value = true
@@ -96,7 +82,7 @@ async function setPatrolRunning(running: boolean): Promise<void> {
     await load()
     store.showToast(
       running
-        ? 'AI 视觉巡检已开始，系统将按周期识别并在发现疑似火情时推送钉钉。'
+        ? 'AI 视觉巡检已开始，将持续自动识别，直到你点击暂停。'
         : 'AI 视觉巡检已暂停，不会继续自动识别或发送新的钉钉告警。',
       'success',
     )
@@ -153,7 +139,7 @@ onBeforeUnmount(() => window.clearInterval(pollTimer))
       <div>
         <span class="role-workspace__eyebrow">AI LIVE VISION PATROL</span>
         <h3>AI 视觉实时巡检</h3>
-        <p>手动开始后随机轮换 15 张模拟监控画面，疑似火灾建档并推送钉钉，暂停后停止自动识别。</p>
+        <p>点击开始后立即识别并持续随机轮换 15 张模拟监控画面，直到点击暂停。</p>
       </div>
       <div class="vision-patrol__head-actions">
         <span class="vision-patrol__live" :class="{ scanning: status?.scanning, paused: !status?.running }"><i></i>{{ status?.scanning ? 'AI 分析中' : status?.running ? '巡检运行中' : '巡检已暂停' }}</span>
@@ -162,9 +148,6 @@ onBeforeUnmount(() => window.clearInterval(pollTimer))
         </button>
         <button v-if="store.canReviewVision && status?.running" type="button" class="btn-ghost" :disabled="actionBusy" @click="setPatrolRunning(false)">
           {{ actionBusy ? '处理中…' : '暂停巡检' }}
-        </button>
-        <button v-if="store.canReviewVision && status?.running" type="button" class="btn-ghost" :disabled="actionBusy" @click="analyzeNext">
-          {{ actionBusy ? '处理中…' : '立即分析下一帧' }}
         </button>
       </div>
     </div>

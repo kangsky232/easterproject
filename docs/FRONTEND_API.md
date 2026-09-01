@@ -185,8 +185,8 @@ Authorization: Bearer <token>
 | GET | `/api/vision/status` | 已登录 | 自动巡检运行状态、当前模拟帧、最近分析、模型/降级状态 |
 | GET | `/api/vision/events?status=&page=1&pageSize=50` | 已登录 | 视觉事件分页 |
 | GET | `/api/vision/summary` | 已登录 | 待判断、已确认、已排除统计 |
-| POST | `/api/vision/simulation/next` | 消防员、小区管理员、系统管理员 | 手动分析下一帧 |
-| POST | `/api/vision/patrol/start` | 消防员、小区管理员、系统管理员 | 开始自动巡检 |
+| POST | `/api/vision/simulation/next` | 消防员、小区管理员、系统管理员 | 调试用单帧分析，主前端无此按钮 |
+| POST | `/api/vision/patrol/start` | 消防员、小区管理员、系统管理员 | 立即识别第一帧并持续自动巡检 |
 | POST | `/api/vision/patrol/pause` | 消防员、小区管理员、系统管理员 | 暂停自动巡检和后续自动告警 |
 | POST | `/api/vision/events/{id}/review` | 消防员、小区管理员、系统管理员 | 提交人工结论 |
 

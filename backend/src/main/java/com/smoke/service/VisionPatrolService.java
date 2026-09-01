@@ -52,23 +52,43 @@ public class VisionPatrolService {
     private volatile Long latestEventId;
     private volatile boolean patrolRunning;
     private volatile boolean scanning;
+    private volatile long nextAutomaticScanAt;
 
     @Scheduled(
-            fixedDelayString = "${app.vision.interval-ms:15000}",
+            fixedDelayString = "${app.vision.scheduler-tick-ms:1000}",
             initialDelayString = "${app.vision.initial-delay-ms:3000}")
     public synchronized void scheduledScan() {
         if (!properties.isEnabled() || !patrolRunning) return;
-        analyzeNextFrame();
+        if (System.currentTimeMillis() < nextAutomaticScanAt) return;
+        try {
+            analyzeNextFrame();
+        } finally {
+            scheduleNextAutomaticScan();
+        }
     }
 
     public synchronized VisionStatusResponse startPatrol() {
-        if (properties.isEnabled()) patrolRunning = true;
-        return status();
+        if (!properties.isEnabled() || patrolRunning) return status();
+        patrolRunning = true;
+        try {
+            VisionStatusResponse response = analyzeNextFrame();
+            scheduleNextAutomaticScan();
+            return response;
+        } catch (RuntimeException exception) {
+            patrolRunning = false;
+            nextAutomaticScanAt = 0L;
+            throw exception;
+        }
     }
 
     public synchronized VisionStatusResponse pausePatrol() {
         patrolRunning = false;
+        nextAutomaticScanAt = 0L;
         return status();
+    }
+
+    private void scheduleNextAutomaticScan() {
+        nextAutomaticScanAt = System.currentTimeMillis() + Math.max(0L, properties.getIntervalMs());
     }
 
     public synchronized VisionStatusResponse analyzeNextFrame() {
