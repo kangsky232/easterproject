@@ -17,6 +17,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,17 +52,42 @@ class VisionPatrolServiceTest {
         ArgumentCaptor<VisionEvent> eventCaptor = ArgumentCaptor.forClass(VisionEvent.class);
         verify(mapper).insert(eventCaptor.capture());
         VisionEvent event = eventCaptor.getValue();
-        assertEquals("A1-05F-C02", event.getCameraCode());
-        assertEquals(5, event.getFloorNo());
+        assertNotNull(event.getCameraCode());
+        assertTrue(event.getFloorNo() >= 1);
+        assertTrue(event.getImageUrl().contains("/vision-patrol/"));
         assertEquals(VisionEvent.STATUS_PENDING_REVIEW, event.getStatus());
         assertEquals(VisionEvent.MODE_DEEPSEEK, event.getDetectionMode());
         assertEquals(new BigDecimal("0.9300"), event.getConfidence());
         assertEquals(VisionEvent.NOTICE_SENT, event.getDingtalkStatus());
         assertEquals(2, event.getDingtalkRecipients());
         ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
-        verify(dingTalk).sendVisionAlert(eq("A1-05F-C02"), messageCaptor.capture());
+        verify(dingTalk).sendVisionAlert(eq(event.getCameraCode()), messageCaptor.capture());
         assertTrue(messageCaptor.getValue().contains("模拟轮播图片（非真实摄像头）"));
         assertTrue(messageCaptor.getValue().contains("DeepSeek Vision（输入仍为模拟轮播图片，非真实摄像头）"));
+    }
+
+    @Test
+    void allFifteenFramesAreVisitedOnceBeforeTheRandomOrderRepeats() {
+        VisionProperties properties = new VisionProperties();
+        DeepSeekVisionClient client = mock(DeepSeekVisionClient.class);
+        VisionEventMapper mapper = mock(VisionEventMapper.class);
+        DingTalkMessageService dingTalk = mock(DingTalkMessageService.class);
+        VisionPatrolService service = new VisionPatrolService(properties, client, mapper, dingTalk);
+        VisionAnalysisResult normal = new VisionAnalysisResult(
+                false, 0.10D, "LOW", "正常", "未见烟火", "SIMULATION_FALLBACK",
+                "built-in-scenario-rules", null);
+        when(client.analyze(any())).thenReturn(normal);
+
+        for (int index = 0; index < 16; index++) service.analyzeNextFrame();
+
+        ArgumentCaptor<SimulatedVisionFrame> frameCaptor = ArgumentCaptor.forClass(SimulatedVisionFrame.class);
+        verify(client, times(16)).analyze(frameCaptor.capture());
+        var frames = frameCaptor.getAllValues();
+        assertEquals(15, frames.subList(0, 15).stream()
+                .map(SimulatedVisionFrame::frameKey)
+                .distinct()
+                .count());
+        assertTrue(!frames.get(14).frameKey().equals(frames.get(15).frameKey()));
     }
 
     @Test

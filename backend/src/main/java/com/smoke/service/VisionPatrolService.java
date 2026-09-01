@@ -22,11 +22,12 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Service
@@ -42,7 +43,9 @@ public class VisionPatrolService {
     private final DeepSeekVisionClient deepSeekVisionClient;
     private final VisionEventMapper visionEventMapper;
     private final DingTalkMessageService dingTalkMessageService;
-    private final AtomicInteger cursor = new AtomicInteger(-1);
+    private final List<Integer> frameOrder = new ArrayList<>();
+    private int frameOrderCursor;
+    private int lastFrameIndex = -1;
 
     private volatile VisionFrameResponse currentFrame;
     private volatile VisionAnalysisResponse latestAnalysis;
@@ -60,7 +63,7 @@ public class VisionPatrolService {
     public synchronized VisionStatusResponse analyzeNextFrame() {
         if (!properties.isEnabled()) return status();
         List<SimulatedVisionFrame> frames = frames();
-        SimulatedVisionFrame frame = frames.get(Math.floorMod(cursor.incrementAndGet(), frames.size()));
+        SimulatedVisionFrame frame = nextFrame(frames);
         LocalDateTime capturedAt = LocalDateTime.now();
         currentFrame = new VisionFrameResponse(
                 frame.frameKey(), frame.cameraCode(), frame.location(), frame.buildingCode(),
@@ -266,29 +269,84 @@ public class VisionPatrolService {
                 event.getReviewRemark(), event.getReviewedAt(), event.getCreatedAt(), event.getUpdatedAt());
     }
 
+    private SimulatedVisionFrame nextFrame(List<SimulatedVisionFrame> frames) {
+        if (frameOrderCursor >= frameOrder.size()) {
+            frameOrder.clear();
+            for (int index = 0; index < frames.size(); index++) frameOrder.add(index);
+            Collections.shuffle(frameOrder);
+            if (frameOrder.size() > 1 && frameOrder.get(0) == lastFrameIndex) {
+                Collections.swap(frameOrder, 0, 1);
+            }
+            frameOrderCursor = 0;
+        }
+        int index = frameOrder.get(frameOrderCursor++);
+        lastFrameIndex = index;
+        return frames.get(index);
+    }
+
     private List<SimulatedVisionFrame> frames() {
-        String base = trimTrailingSlash(properties.getFrameBaseUrl()) + "/assets/";
+        String base = trimTrailingSlash(properties.getFrameBaseUrl()) + "/vision-patrol/";
         return List.of(
                 new SimulatedVisionFrame(
-                        "entrance-corridor", "A1-01F-C01", "1号住宅楼 1层入户门厅", "A1", 1,
-                        base + "entrance-corridor-BL0doDXM.jpg", false,
-                        "画面未发现明显烟火迹象", "通道清晰，未见明火或成片烟雾"),
+                        "lobby-normal", "A1-01F-C03", "1号住宅楼 1层电梯门厅", "A1", 1,
+                        base + "01-lobby-normal.jpg", false,
+                        "门厅画面未发现烟火迹象", "电梯门厅清晰，未见明火或异常烟雾"),
                 new SimulatedVisionFrame(
-                        "modern-corridor", "A2-03F-C01", "2号住宅楼 3层公共过道", "A2", 3,
-                        base + "modern-corridor-BzsoYJRn.jpg", false,
-                        "画面未发现明显烟火迹象", "过道能见度正常，未见异常烟雾扩散"),
+                        "parking-normal", "A1-B1-C01", "1号住宅楼 地下停车连接区", "A1", 1,
+                        base + "02-parking-normal.jpg", false,
+                        "停车连接区未发现烟火迹象", "车库能见度正常，未见烟雾或异常亮点"),
                 new SimulatedVisionFrame(
-                        "smoke-warning-corridor", "A1-05F-C02", "1号住宅楼 5层西侧过道", "A1", 5,
-                        base + "smoke-warning-corridor-TL6p4JOq.jpg", true,
-                        "画面出现疑似烟雾，需要人工复核", "过道中部存在灰白色烟雾状区域，能见度下降"),
+                        "bicycle-room-normal", "A2-01F-C04", "2号住宅楼 1层非机动车存放间", "A2", 1,
+                        base + "03-bicycle-room-normal.jpg", false,
+                        "非机动车存放间未发现烟火迹象", "车辆区域轮廓清晰，未见烟雾或火焰"),
                 new SimulatedVisionFrame(
-                        "fire-stairwell", "A3-04F-C01", "3号住宅楼 4层消防楼梯", "A3", 4,
-                        base + "fire-stairwell-BhMc0tLx.jpg", false,
-                        "画面未发现明显烟火迹象", "楼梯间轮廓清晰，未见火焰或烟雾聚集"),
+                        "electrical-room-normal", "A3-02F-C02", "3号住宅楼 2层配电设备间", "A3", 2,
+                        base + "04-electrical-room-normal.jpg", false,
+                        "配电设备间未发现烟火迹象", "柜体与通道清晰，未见烟雾、火花或异常亮点"),
                 new SimulatedVisionFrame(
-                        "electrical-smoke-warning", "A2-06F-C03", "2号住宅楼 6层配电间外", "A2", 6,
-                        base + "electrical-smoke-warning-Ew9Ip3d7.jpg", true,
-                        "画面出现疑似电气烟雾，需要立即人工复核", "配电区域附近出现浓烟状遮挡并伴随异常亮点"));
+                        "stairwell-night-normal", "A1-04F-C02", "1号住宅楼 4层消防楼梯", "A1", 4,
+                        base + "05-stairwell-night-normal.jpg", false,
+                        "夜间楼梯画面未发现烟火迹象", "楼梯和防火门轮廓清晰，未见烟雾聚集"),
+                new SimulatedVisionFrame(
+                        "rooftop-normal", "A2-08F-C04", "2号住宅楼 8层屋面出口", "A2", 8,
+                        base + "06-rooftop-normal.jpg", false,
+                        "屋面出口未发现烟火迹象", "出口平台能见度正常，未见烟雾或火焰"),
+                new SimulatedVisionFrame(
+                        "elevator-lobby-normal", "A3-03F-C02", "3号住宅楼 3层电梯前室", "A3", 3,
+                        base + "07-elevator-lobby-normal.jpg", false,
+                        "电梯前室未发现烟火迹象", "前室清晰，未见异常烟雾扩散"),
+                new SimulatedVisionFrame(
+                        "rain-passage-normal", "A1-01F-C04", "1号住宅楼 1层室外连廊", "A1", 1,
+                        base + "08-rain-passage-normal.jpg", false,
+                        "雨天连廊未发现烟火迹象", "画面中的低对比区域来自雨水反光，未见烟雾聚集"),
+                new SimulatedVisionFrame(
+                        "old-hallway-normal", "A3-02F-C03", "3号住宅楼 2层旧式过道", "A3", 2,
+                        base + "09-old-hallway-normal.jpg", false,
+                        "旧式过道未发现烟火迹象", "管线和楼梯区域清晰，未见异常烟雾"),
+                new SimulatedVisionFrame(
+                        "rental-corridor-normal", "A2-05F-C04", "2号住宅楼 5层出租房过道", "A2", 5,
+                        base + "10-rental-corridor-normal.jpg", false,
+                        "出租房过道未发现烟火迹象", "房门与通道能见度正常，未见烟雾或火焰"),
+                new SimulatedVisionFrame(
+                        "kitchen-smoke", "A1-02F-C05", "1号住宅楼 2层活动室厨房外", "A1", 2,
+                        base + "11-kitchen-smoke.jpg", true,
+                        "厨房门口出现疑似烟雾，需要人工复核", "灰白色烟雾从厨房门缝及门前区域持续扩散"),
+                new SimulatedVisionFrame(
+                        "waste-room-smoke", "A2-01F-C05", "2号住宅楼 1层垃圾收集间", "A2", 1,
+                        base + "12-waste-room-smoke.jpg", true,
+                        "垃圾收集间出现疑似阴燃烟雾，需要人工复核", "一个垃圾桶上方存在连续灰白色烟柱"),
+                new SimulatedVisionFrame(
+                        "electrical-cabinet-fire", "A3-02F-C06", "3号住宅楼 2层配电柜通道", "A3", 2,
+                        base + "13-electrical-cabinet-fire.jpg", true,
+                        "配电柜出现疑似电气火情，需要立即人工复核", "柜体下沿存在深灰烟雾并伴随橙色异常亮点"),
+                new SimulatedVisionFrame(
+                        "stairwell-smoke", "A1-04F-C06", "1号住宅楼 4层消防楼梯", "A1", 4,
+                        base + "14-stairwell-smoke.jpg", true,
+                        "消防楼梯出现大量疑似烟雾，需要立即人工复核", "灰色烟雾由下层楼梯向上扩散，能见度明显下降"),
+                new SimulatedVisionFrame(
+                        "ebike-charging-fire", "A2-B1-C06", "2号住宅楼 地下电动车充电区", "A2", 1,
+                        base + "15-ebike-charging-fire.jpg", true,
+                        "电动车充电区出现疑似明火和浓烟，需要立即人工复核", "车辆充电位可见橙色火焰与上升的深色浓烟"));
     }
 
     private String normalizeStatus(String value) {

@@ -181,7 +181,7 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 
 `verdict` 仅支持 `CONFIRMED_FIRE` 与 `FALSE_ALARM`，`remark` 必填且最多 500 字。后端从 JWT 写入复核账号与服务器时间；已复核事件再次提交返回 `409`，不能覆盖原结论。
 
-后端默认每 15 秒轮换 5 张静态模拟图片。配置 `DEEPSEEK_API_KEY` 后，请求以外部 HTTPS 图片 URL 发送到 DeepSeek `deepseek-v4-flash-vision-exp`；未配置时分析结果的 `mode` 为 `SIMULATION_FALLBACK`，配置后调用失败则为 `DEEPSEEK_ERROR`，失败帧不会创建疑似事件。模型或模拟规则只有在 `suspectedFire=true` 且 `confidence` 达到阈值时才建档；同一机位已有待复核事件时不会重复建档或重复推送。
+后端默认每 15 秒从 15 张静态模拟图片中洗牌式随机取一张：每轮全部出现一次，跨轮相邻画面也不会重复；素材包含 10 张正常和 5 张疑似烟火。配置 `DEEPSEEK_API_KEY` 后，请求以外部 HTTPS 图片 URL 发送到 DeepSeek `deepseek-v4-flash-vision-exp`；未配置时分析结果的 `mode` 为 `SIMULATION_FALLBACK`，配置后调用失败则为 `DEEPSEEK_ERROR`，失败帧不会创建疑似事件。模型或模拟规则只有在 `suspectedFire=true` 且 `confidence` 达到阈值时才建档；同一机位已有待复核事件时不会重复建档或重复推送。
 
 事件的 `dingtalkStatus` 为 `PENDING`、`SENT`、`FAILED` 或 `SKIPPED`，并保存成功接收人数或失败原因。钉钉消息会明确注明画面来自模拟轮播、不是现场摄像头；人工复核后会再发送结果通知。AI 结果只用于提示和分流，不能自动替代现场核验、119 报警或法定消防设施。
 

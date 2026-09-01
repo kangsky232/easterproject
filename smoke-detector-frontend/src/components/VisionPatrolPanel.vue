@@ -9,20 +9,8 @@ import type {
 } from '@/api/types'
 import { useDashboardStore } from '@/store/dashboard'
 import { fmtDate } from '@/utils/format'
-import electricalSmokeWarningImage from '@/assets/corridor-cameras/electrical-smoke-warning.jpg'
-import entranceCorridorImage from '@/assets/corridor-cameras/entrance-corridor.jpg'
-import fireStairwellImage from '@/assets/corridor-cameras/fire-stairwell.jpg'
-import modernCorridorImage from '@/assets/corridor-cameras/modern-corridor.jpg'
-import smokeWarningCorridorImage from '@/assets/corridor-cameras/smoke-warning-corridor.jpg'
 
 const store = useDashboardStore()
-const frameImages: Record<string, string> = {
-  'electrical-smoke-warning': electricalSmokeWarningImage,
-  'entrance-corridor': entranceCorridorImage,
-  'fire-stairwell': fireStairwellImage,
-  'modern-corridor': modernCorridorImage,
-  'smoke-warning-corridor': smokeWarningCorridorImage,
-}
 
 const status = ref<VisionStatus | null>(null)
 const summary = ref<VisionSummary>({ pendingReview: 0, confirmedFire: 0, falseAlarm: 0, total: 0 })
@@ -37,9 +25,7 @@ let pollTimer: number | undefined
 
 const frame = computed(() => status.value?.currentFrame ?? null)
 const analysis = computed(() => status.value?.latestAnalysis ?? null)
-const frameImage = computed(() => frame.value
-  ? frameImages[frame.value.frameKey] ?? frame.value.imageUrl
-  : '')
+const frameImage = computed(() => frame.value?.imageUrl ?? '')
 const pendingEvent = computed(() => events.value.find((event) => event.status === 'PENDING_REVIEW') ?? null)
 const reviewTarget = computed(() => events.value.find((event) => event.id === reviewTargetId.value) ?? null)
 const recentEvents = computed(() => events.value.slice(0, 6))
@@ -146,7 +132,7 @@ onBeforeUnmount(() => window.clearInterval(pollTimer))
       <div>
         <span class="role-workspace__eyebrow">AI LIVE VISION PATROL</span>
         <h3>AI 视觉实时巡检</h3>
-        <p>模拟监控画面自动轮换，疑似火灾实时建档并推送钉钉，最终由工作人员判断。</p>
+        <p>15 张模拟监控画面随机轮换，疑似火灾实时建档并推送钉钉，最终由工作人员判断。</p>
       </div>
       <div class="vision-patrol__head-actions">
         <span class="vision-patrol__live" :class="{ scanning: status?.scanning }"><i></i>{{ status?.scanning ? 'AI 分析中' : '实时巡检中' }}</span>
@@ -161,7 +147,7 @@ onBeforeUnmount(() => window.clearInterval(pollTimer))
     <template v-else>
       <div class="vision-patrol__mode" :class="{ fallback: !status?.deepSeekConfigured }">
         <strong>{{ modeLabel }}</strong>
-        <span>每 {{ Math.round((status?.intervalMs ?? 15000) / 1000) }} 秒轮换并分析一帧</span>
+        <span>15 张画面随机不重复一轮 · 每 {{ Math.round((status?.intervalMs ?? 15000) / 1000) }} 秒分析一帧</span>
         <small v-if="!status?.deepSeekConfigured">配置 DEEPSEEK_API_KEY 后自动切换为真实图片模型分析；当前结果来自预设演示规则。</small>
         <small v-else>图片正通过 DeepSeek Vision 分析；模型输出仍须人工现场核验。</small>
       </div>
