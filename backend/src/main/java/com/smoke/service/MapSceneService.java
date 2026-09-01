@@ -76,7 +76,7 @@ public class MapSceneService {
                         activeSeverity.get(device.getDeviceId()),
                         referenceTime))
                 .toList();
-        return new MapSceneResponse("KANGROOM_DEMO", "康居智慧社区", 100, 100,
+        return new MapSceneResponse("KANGROOM_DEMO", "康居社区三维态势", 100, 100,
                 buildingResponses, deviceResponses);
     }
 

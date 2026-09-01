@@ -95,7 +95,7 @@ class MapSceneServiceTest {
 
         var scene = service.scene();
 
-        assertEquals("康居智慧社区", scene.sceneName());
+        assertEquals("康居社区三维态势", scene.sceneName());
         assertEquals(1, scene.buildings().size());
         assertEquals(1, scene.devices().size());
         assertEquals("ALARM", scene.devices().get(0).status());

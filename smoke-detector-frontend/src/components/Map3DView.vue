@@ -559,7 +559,7 @@ watch(
     <div class="map3d-head">
       <div>
         <span class="role-workspace__eyebrow">SIMULATED DIGITAL TWIN</span>
-        <h2>{{ scene?.sceneName ?? '模拟 3D 社区地图' }}</h2>
+        <h2>{{ scene?.sceneName ?? '社区三维态势' }}</h2>
         <p>点击楼栋立面上的楼层，即可联动查看过道画面、本层设备和实时告警状态。</p>
         <p v-if="store.mapSceneStale" class="map3d-stale-warning">
           地图状态刷新失败，旧的在线标记已按离线处理，请检查公网 API 连接。
@@ -585,7 +585,7 @@ watch(
         </div>
 
         <div v-if="!scene" class="map3d-empty">地图数据加载中…</div>
-        <svg v-else viewBox="0 0 1000 660" role="group" aria-label="可点击楼栋和楼层的智慧社区模拟三维地图">
+        <svg v-else viewBox="0 0 1000 660" role="group" aria-label="可点击楼栋和楼层的社区三维态势地图">
           <g class="map3d-world" :style="{ transform: 'scale(' + zoom + ')', transformOrigin: '500px 350px' }">
             <polygon class="map3d-ground" :points="points([project(0, 0), project(100, 0), project(100, 100), project(0, 100)])" />
             <line

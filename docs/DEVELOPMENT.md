@@ -90,7 +90,7 @@ MQTT 不影响登录、数据库接口和前端基本联调。需要接入华为
 
 钉钉接入使用 Stream 模式，无需填写公网回调地址。在 `.env.dingtalk.local` 中设置 `DINGTALK_ENABLED=true`、Client ID 和 Client Secret，再用上面的启动脚本运行后端。每名接收人需要先在钉钉中私聊机器人一次；机器人回复“连接成功”后，其员工 userId 会写入 `dingtalk_recipient`，网页广播和新产生的传感器告警会发送到启用状态的绑定用户单聊。真实 Client Secret 不得提交到 Git。
 
-AI 视觉功能默认启用，但后端每次启动后的自动巡检状态默认暂停；有 `VISION_REVIEW` 权限的账号在 3D 社区页点击一次“开始巡检”后，系统立即识别第一帧并持续每 15 秒轮换模拟图片，直到点击“暂停巡检”，之后停止新的自动分析和钉钉识别告警。在 `.env.vision.local` 中写入 `DEEPSEEK_API_KEY=<你的密钥>` 后，启动脚本会切换到 DeepSeek Vision；未配置 Key 时界面与事件使用 `SIMULATION_FALLBACK`。疑似结果会进入 `vision_event`，钉钉已配置时自动推送给绑定员工，再由有 `VISION_REVIEW` 权限的账号人工研判。当前输入仍是静态模拟图，不是真实摄像头。
+AI 视觉功能默认启用，但后端每次启动后的自动巡检状态默认暂停；有 `VISION_REVIEW` 权限的账号在社区三维态势页点击一次“开始巡检”后，系统立即识别第一帧并持续每 15 秒轮换模拟图片，直到点击“暂停巡检”，之后停止新的自动分析和钉钉识别告警。在 `.env.vision.local` 中写入 `DEEPSEEK_API_KEY=<你的密钥>` 后，启动脚本会切换到 DeepSeek Vision；未配置 Key 时界面与事件使用 `SIMULATION_FALLBACK`。疑似结果会进入 `vision_event`，钉钉已配置时自动推送给绑定员工，再由有 `VISION_REVIEW` 权限的账号人工研判。当前输入仍是静态模拟图，不是真实摄像头。
 
 ## 开发账号
 

@@ -64,9 +64,9 @@ export const ROLE_LABEL: Record<string, string> = {
 
 export const MODULE_LABELS = {
   monitor: '📊 实时监控',
-  map: '🏙️ 3D 社区',
+  map: '🏙️ 社区三维态势',
   devices: '🔧 设备管理',
-  hazards: '🧯 隐患闭环',
+  hazards: '🧯 隐患管理',
   notifications: '🔔 通知记录',
   broadcasts: '📣 广播管理',
   users: '👥 用户管理',

@@ -224,8 +224,8 @@ watch([statusFilter, priorityFilter], () => {
   <section class="hazard-view">
     <div class="hazard-head">
       <div>
-        <span class="role-workspace__eyebrow">HAZARD CLOSED LOOP</span>
-        <h2>安全隐患闭环</h2>
+        <span class="role-workspace__eyebrow">HAZARD MANAGEMENT</span>
+        <h2>安全隐患管理</h2>
         <p>从发现上报、接单整改到复核归档，全过程留痕并按角色流转。</p>
       </div>
       <button v-if="store.canReportHazards" type="button" class="btn-primary" @click="openCreate">＋ 上报隐患</button>

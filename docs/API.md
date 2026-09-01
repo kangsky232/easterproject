@@ -143,7 +143,7 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 
 烟雾浓度、环境温湿度、电流、线缆温度、CO 值、趋势统计值和烟雾告警触发浓度均为 JSON 数字，可包含两位小数；蜂鸣器状态为字符串；阈值当前仍为正整数。旧历史数据的新增字段可能为 `null`。
 
-## 模拟 3D 地图
+## 社区三维态势
 
 - `GET /api/map/scene`：所有已登录角色均可读取模拟社区场景，返回楼栋尺寸/坐标、楼层数，以及设备楼栋、楼层、房间、局部坐标、在线/告警状态和最新遥测。
 - `PUT /api/map/devices/{id}/position`：仅小区管理员和系统管理员可修改设备地图位置。
@@ -187,7 +187,7 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 
 事件的 `dingtalkStatus` 为 `PENDING`、`SENT`、`FAILED` 或 `SKIPPED`，并保存成功接收人数或失败原因。钉钉消息会明确注明画面来自模拟轮播、不是现场摄像头；人工复核后会再发送结果通知。AI 结果只用于提示和分流，不能自动替代现场核验、119 报警或法定消防设施。
 
-## 隐患闭环
+## 隐患管理
 
 - `GET /api/hazards?status=&priority=&page=1&pageSize=100`：分页查询隐患；居民只返回本人上报记录，消防员、小区管理员和系统管理员返回全部记录。
 - `GET /api/hazards/summary`：按同样可见范围返回 `reported`、`processing`、`pendingReview`、`closed` 和 `openTotal`。
