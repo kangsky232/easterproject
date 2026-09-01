@@ -1,6 +1,6 @@
 # 前端接口协作说明
 
-契约版本：2026-08-31。接口字段以本文件和开发环境 OpenAPI 为准；功能是否为真实外部集成，请同时查看 [功能状态](PROJECT_STATUS.md)。
+契约版本：2026-09-01。接口字段以本文件和开发环境 OpenAPI 为准；功能是否为真实外部集成，请同时查看 [功能状态](PROJECT_STATUS.md)。
 
 本文面向 Web、移动端和后续管理端开发。开发环境默认后端地址为 `http://127.0.0.1:8080`；Vite 开发时可直接使用 `/api` 代理。
 
@@ -100,7 +100,7 @@ Authorization: Bearer <token>
 | GET | `/api/system/capabilities` | 公开能力状态，前端可据此展示 MQTT、视觉 AI、知识库、广播的接入状态 |
 | GET | `/api/dashboard/overview` | 设备总数、在线数、离线数、活动告警数 |
 
-能力值属于运行时状态而不是版本承诺。2026-08-31 联调快照为 `mqtt=CONNECTED`、`visualAi=NOT_CONNECTED`、`knowledgeBase=FALLBACK_ONLY`、`broadcast=DINGTALK_SINGLE_CHAT`；每次验收都应重新请求接口。
+能力值属于运行时状态而不是版本承诺。`visualAi` 当前支持 `DISABLED`、`SIMULATION_FALLBACK`、`DEEPSEEK_VISION`；2026-09-01 本机未配置 DeepSeek Key，因此预期为 `SIMULATION_FALLBACK`。每次验收都应重新请求接口。
 
 `/api/dashboard/overview` 的 `data`：
 
@@ -175,6 +175,24 @@ Authorization: Bearer <token>
 地图场景的 `buildings` 用于绘制 3D 楼栋，`devices` 包含 `status`（`ONLINE` / `OFFLINE` / `ALARM`）、`alertSeverity`、楼层/房间、坐标和最新六类遥测。后端只有在设备已绑定、持久化状态为在线且最后心跳不早于 `smoke.offline-timeout-seconds`（默认 60 秒）时才返回 `ONLINE`；传感器预警/危险仍优先返回 `ALARM`。前端把可见立面按楼层切分为点击区域，并把设备点投影到最近的可见楼体立面，避免楼体深度与透视造成跨层错位；当前数据库中的 501 设备应显示在 5 层。楼栋、楼层按钮、设备列表和右侧详情联动；地图每 3 秒刷新时保留用户当前楼层和管理员尚未提交的位置表单。若地图请求失败，旧快照中的在线设备会降级显示为离线，并显示状态过期提示，避免继续冒充实时在线。居民与消防员看到只读地图，小区管理员和系统管理员显示位置编辑表单。前端修改位置后必须重新拉取场景，不在本地伪造保存成功。
 
 当前过道主视角、公共区域和 AI 预警复核共使用 21 张静态演示图片。前端按楼栋编号排序并累计楼层索引，为当前 19 个楼层逐一分配 19 张独立正常图；第二常规机位使用错位索引，保证同层不重复，另有 2 张烟雾预警图。界面明确标注“模拟画面 / 尚未接入真实摄像头”。这些图片不属于 `/api/map/scene` 返回值，也不能作为真实视觉复核结果；后续接入摄像头时应补充摄像头目录、流地址/回放地址、访问鉴权和模型结果接口。
+
+## AI 视觉实时巡检
+
+3D 社区页内嵌视觉巡检面板，并每 3 秒轮询状态、事件与汇总：
+
+| 方法 | 路径 | 权限 | 用途 |
+| --- | --- | --- | --- |
+| GET | `/api/vision/status` | 已登录 | 当前模拟帧、最近分析、模型/降级状态 |
+| GET | `/api/vision/events?status=&page=1&pageSize=50` | 已登录 | 视觉事件分页 |
+| GET | `/api/vision/summary` | 已登录 | 待判断、已确认、已排除统计 |
+| POST | `/api/vision/simulation/next` | 消防员、小区管理员、系统管理员 | 手动分析下一帧 |
+| POST | `/api/vision/events/{id}/review` | 消防员、小区管理员、系统管理员 | 提交人工结论 |
+
+`VisionStatus` 的 `deepSeekConfigured` 决定前端展示“DeepSeek”还是“模拟规则降级”。单帧 `latestAnalysis.mode` 还可能为 `DEEPSEEK_ERROR`；此时必须显示错误，不能展示为安全结论。`currentFrame.frameKey` 对应前端内置演示图片，`imageUrl` 是 DeepSeek 可访问的 Pages 图片地址。
+
+事件状态为 `PENDING_REVIEW`、`CONFIRMED_FIRE`、`FALSE_ALARM`；复核请求为 `{"verdict":"CONFIRMED_FIRE","remark":"现场核验依据"}`。拥有 `VISION_REVIEW` 权限的账号显示“立即分析下一帧”和复核按钮，居民只能查看。提交成功后刷新事件与统计；后端返回 `409` 时说明其他工作人员已先完成判断，不能覆盖原结论。
+
+`dingtalkStatus` 为 `PENDING`、`SENT`、`FAILED`、`SKIPPED`。界面必须始终提示当前是模拟图片轮播；即使分析模式为 `DEEPSEEK_VISION`，也不能描述为真实摄像头实时画面。人工确认只是系统处置留痕，发生真实火情仍按现场流程报警。
 
 ## 隐患闭环
 

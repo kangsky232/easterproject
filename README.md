@@ -1,10 +1,10 @@
 # 智慧烟感监测系统
 
-更新日期：2026-08-31。
+更新日期：2026-09-01。
 
 面向社区烟感监测场景的全栈项目，包含 Vue 3 管理大屏、Spring Boot API、MySQL 数据存储、HTTP 设备接口、华为云 IoTDA MQTT 数据接入，以及可选的 RAG 和视觉复核扩展。
 
-> 当前版本已实现 MQTT 入站遥测、六类传感器阈值告警、钉钉自动告警、机器人单聊广播、隐患上报—整改—复核闭环、四角色差异化工作台、欢迎首页与明暗主题、右下角白底智能问答小窗，以及可点击楼栋/楼层的模拟 3D 社区地图。真实短信、MQTT 设备广播和摄像头识别仍属于外部集成项，详见 [功能状态](docs/PROJECT_STATUS.md)。
+> 当前版本已实现 MQTT 入站遥测、六类传感器阈值告警、钉钉自动告警、机器人单聊广播、隐患上报—整改—复核闭环、DeepSeek 图片识别与模拟实时巡检、AI 疑似火情建档—钉钉推送—人工研判闭环、四角色差异化工作台、右下角白底智能问答小窗，以及可点击楼栋/楼层的模拟 3D 社区地图。真实短信、MQTT 设备广播和真实摄像头流仍属于外部集成项，详见 [功能状态](docs/PROJECT_STATUS.md)。
 
 ## 当前业务场景
 
@@ -14,9 +14,11 @@
 
 智能问答不再占用独立功能页；登录后通过右下角“AI 安全助手”打开约 `440×620 px` 的白底小窗，移动端按可视区域自适应。问答仍仅作安全处置辅助，不替代现场核验和 119 报警。
 
+3D 社区页新增“AI 视觉实时巡检”：5 个模拟机位按配置周期轮换图片，配置 `DEEPSEEK_API_KEY` 后由 `deepseek-v4-flash-vision-exp` 分析画面；没有密钥时明确显示并使用内置场景规则，绝不把规则结果冒充为模型结论。超过置信度阈值的疑似事件会写入 MySQL，并向已绑定员工发送钉钉单聊；消防员、小区管理员或系统管理员必须填写依据，才能一次性确认为火情或排除误报。当前图片仍是静态演示素材，不是真实摄像头证据。
+
 完整业务边界、告警口径和分阶段迭代计划见 [业务场景与迭代路线](docs/BUSINESS_SCENARIO_AND_ROADMAP.md)。
 
-当前演示前端为 [https://easterproject.pages.dev](https://easterproject.pages.dev)，公网 API 固定为 [https://api.kangroom.eu.cc](https://api.kangroom.eu.cc)。API 通过 Cloudflare Named Tunnel 转发到本机 `127.0.0.1:8080`；重启服务无需更换域名，但本机后端、MySQL 和隧道进程必须保持运行。截至 2026-08-31 的当前演示快照为：数据库与 MQTT 连接正常，钉钉单聊已配置，RAG 使用后端安全规则回退，视觉 AI 未连接。这是运行快照，不是永久可用性承诺。
+当前演示前端为 [https://easterproject.pages.dev](https://easterproject.pages.dev)，公网 API 固定为 [https://api.kangroom.eu.cc](https://api.kangroom.eu.cc)。API 通过 Cloudflare Named Tunnel 转发到本机 `127.0.0.1:8080`；重启服务无需更换域名，但本机后端、MySQL 和隧道进程必须保持运行。截至 2026-09-01 的本机配置中，数据库、MQTT 与钉钉单聊已配置，视觉巡检已启用但尚未提供 DeepSeek Key，因此运行在明确标注的 `SIMULATION_FALLBACK`，RAG 使用后端安全规则回退。这是运行配置说明，不是永久可用性承诺。
 
 ## 项目结构
 
@@ -25,7 +27,7 @@ smart-smoke/
 ├── smoke-detector-frontend/  # Vue 3 + Vite + TypeScript + Pinia + ECharts
 ├── backend/                  # Spring Boot 3 + MyBatis-Plus + JWT
 ├── rag-service/              # 可选的知识检索与 Ollama 问答服务
-├── ai-vision/                # 视觉复核扩展目录
+├── ai-vision/                # 历史 Flask 视觉占位目录；当前视觉闭环实现在 backend
 ├── hardware/                 # 设备协议与硬件说明
 ├── deploy/                   # Nginx 等部署模板
 ├── docs/                     # API、开发、部署和功能状态文档
@@ -36,7 +38,7 @@ smart-smoke/
 
 前置环境：JDK 17+、Maven 3.9+、Node.js 18+、MySQL 8。
 
-1. 启动本机 MySQL，创建 `smart_smoke` 数据库并执行 `docs/schema.sql`。旧数据库按需依次执行 `docs/migrations/` 中的浓度小数、扩展传感器和 3D 地图迁移。
+1. 启动本机 MySQL，创建 `smart_smoke` 数据库并执行 `docs/schema.sql`。旧数据库按时间顺序执行 `docs/migrations/`；本次视觉巡检对应 `20260901_vision_patrol.sql`。后端启动也会兼容创建视觉事件表。
 2. 启动后端：
 
 ```powershell
@@ -64,6 +66,8 @@ Windows PowerShell 若禁止执行 `npm.ps1`，请改用 `npm.cmd install` 和 `
 MQTT 和 RAG 服务不是本地核心功能启动的前置条件。配置 `MQTT_ENABLED=true` 后，后端会订阅华为云转发主题，接收烟雾浓度、温湿度、电流、线缆温度、CO 值和蜂鸣器状态，数值统一保留两位小数；RAG 不可用时后端会返回内置安全规则答案；未接短信供应商时 SMS 通知保留为待发送记录。
 
 配置钉钉 Client ID/Client Secret 并启用 `DINGTALK_ENABLED` 后，后端通过 Stream 模式接收机器人私聊。员工首次私聊会自动绑定；网页广播以及烟雾、温湿度、电流、线缆温度和 CO 自动告警会发送到已启用且已绑定员工的钉钉单聊。可使用 `.\scripts\start-backend.ps1` 加载本机的 `.env.dingtalk.local` 并启动后端。
+
+如需使用真实 DeepSeek 图片分析，在 Git 忽略的 `.env.vision.local` 中设置 `DEEPSEEK_API_KEY=<你的密钥>`，再运行 `.\scripts\start-backend.ps1`。脚本会同时加载 MQTT、钉钉和视觉本机配置；不要把真实密钥提交到 Git。没有 Key 时功能仍可完整演示，但界面、接口、事件和钉钉文案都会标注为模拟规则结果。
 
 管理大屏默认以“实时”模式展示最近 120 条原始浓度数据，每 3 秒刷新一次，与当前华为云设备上报周期保持一致；24 小时、7 天和 30 天视图使用后端聚合趋势接口。MQTT 消息到达后端时会立即入库，不等待轮询。
 
@@ -94,6 +98,7 @@ npm run build
 - [业务场景与迭代路线](docs/BUSINESS_SCENARIO_AND_ROADMAP.md)
 - [功能完成状态](docs/PROJECT_STATUS.md)
 - [智能问答优化记录](docs/SMART_QA_OPTIMIZATION.md)
+- [AI 视觉巡检说明](ai-vision/README.md)
 - [部署与上线检查](docs/DEPLOYMENT.md)
 - [Cloudflare Pages 与本机后端联调](docs/CLOUDFLARE_PAGES.md)
 - [硬件与华为云 MQTT 接入](hardware/README.md)

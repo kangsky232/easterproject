@@ -176,6 +176,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const canHandleHazards = computed(() => hasPermission('HAZARD_HANDLE'))
   const canReviewHazards = computed(() => hasPermission('HAZARD_REVIEW'))
   const canAuditNotifications = computed(() => hasPermission('NOTIFICATION_AUDIT'))
+  const canReviewVision = computed(() => hasPermission('VISION_REVIEW'))
   const canSimulate = computed(
     () => canManageDevices.value && capabilities.value.mode === 'LOCAL_DEVELOPMENT',
   )
@@ -836,6 +837,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     canHandleHazards,
     canReviewHazards,
     canAuditNotifications,
+    canReviewVision,
     canSimulate,
     broadcastPersistenceOnly,
     kpiItems,

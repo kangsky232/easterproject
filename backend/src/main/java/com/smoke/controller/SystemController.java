@@ -4,6 +4,7 @@ import com.smoke.common.Result;
 import com.smoke.mqtt.HuaweiMqttSubscriber;
 import com.smoke.service.RagClient;
 import com.smoke.service.DingTalkMessageService;
+import com.smoke.service.VisionPatrolService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
@@ -27,6 +28,7 @@ public class SystemController {
     private final Environment environment;
     private final HuaweiMqttSubscriber huaweiMqttSubscriber;
     private final DingTalkMessageService dingTalkMessageService;
+    private final VisionPatrolService visionPatrolService;
 
     @GetMapping("/health")
     public ResponseEntity<Result<?>> health() {
@@ -55,7 +57,7 @@ public class SystemController {
         capabilities.put("storage", "MYSQL");
         capabilities.put("deviceIngress", "REST");
         capabilities.put("mqtt", huaweiMqttSubscriber.isConnected() ? "CONNECTED" : "NOT_CONNECTED");
-        capabilities.put("visualAi", "NOT_CONNECTED");
+        capabilities.put("visualAi", visionPatrolService.capability());
         capabilities.put("knowledgeBase", ragHealth.available() ? "CONNECTED" : "FALLBACK_ONLY");
         capabilities.put("llmProvider", ragHealth.provider());
         capabilities.put("llmModel", ragHealth.model());

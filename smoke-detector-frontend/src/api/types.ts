@@ -105,6 +105,78 @@ export interface NotificationSummary {
   attentionCount: number
 }
 
+export type VisionEventStatus = 'PENDING_REVIEW' | 'CONFIRMED_FIRE' | 'FALSE_ALARM'
+export type VisionReviewVerdict = 'CONFIRMED_FIRE' | 'FALSE_ALARM'
+
+export interface VisionFrame {
+  frameKey: string
+  cameraCode: string
+  location: string
+  buildingCode: string
+  floorNo: number
+  imageUrl: string
+  capturedAt: string
+}
+
+export interface VisionAnalysis {
+  suspectedFire: boolean
+  confidence: number
+  riskLevel: string
+  summary: string
+  evidence: string
+  mode: 'DEEPSEEK_VISION' | 'SIMULATION_FALLBACK' | 'DEEPSEEK_ERROR'
+  model: string
+  error?: string | null
+  analyzedAt: string
+}
+
+export interface VisionEvent {
+  id: number
+  eventNo: string
+  cameraCode: string
+  location: string
+  buildingCode: string
+  floorNo: number
+  frameKey: string
+  imageUrl: string
+  detectionMode: 'DEEPSEEK_VISION' | 'SIMULATION_FALLBACK'
+  modelName: string
+  riskLevel: string
+  confidence: number
+  summary: string
+  evidence: string
+  status: VisionEventStatus
+  dingtalkStatus: 'PENDING' | 'SENT' | 'FAILED' | 'SKIPPED'
+  dingtalkRecipients?: number | null
+  dingtalkError?: string | null
+  reviewerUsername?: string | null
+  reviewRemark?: string | null
+  reviewedAt?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface VisionStatus {
+  enabled: boolean
+  scanning: boolean
+  deepSeekConfigured: boolean
+  mode: string
+  provider: string
+  model: string
+  intervalMs: number
+  confidenceThreshold: number
+  currentFrame?: VisionFrame | null
+  latestAnalysis?: VisionAnalysis | null
+  latestEvent?: VisionEvent | null
+}
+
+export interface VisionSummary {
+  pendingReview: number
+  confirmedFire: number
+  falseAlarm: number
+  total: number
+}
+
 export interface BroadcastRaw {
   id: number
   deviceId: string

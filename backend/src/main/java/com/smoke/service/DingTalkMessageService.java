@@ -71,6 +71,26 @@ public class DingTalkMessageService {
                 deviceId);
     }
 
+    public int sendVisionAlert(String cameraCode, String content) {
+        if (!properties.isConfigured()) {
+            throw new DingTalkDeliveryException("钉钉视觉告警尚未配置");
+        }
+        return sendToRecipients(
+                "【AI视觉疑似火情·待人工核查】\n" + content,
+                "vision-alert",
+                cameraCode);
+    }
+
+    public int sendVisionReview(String cameraCode, String content) {
+        if (!properties.isConfigured()) {
+            throw new DingTalkDeliveryException("钉钉视觉复核通知尚未配置");
+        }
+        return sendToRecipients(
+                "【AI视觉人工复核结果】\n" + content,
+                "vision-review",
+                cameraCode);
+    }
+
     private int sendToRecipients(String text, String messageType, String deviceId) {
         List<String> userIds = recipientMapper.selectList(Wrappers.<DingTalkRecipient>lambdaQuery()
                         .eq(DingTalkRecipient::getEnabled, 1)

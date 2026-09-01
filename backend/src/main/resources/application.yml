@@ -19,3 +19,13 @@ app:
     client-secret: ${DINGTALK_CLIENT_SECRET:}
     # For an internal-app robot this normally equals Client ID (the old AppKey).
     robot-code: ${DINGTALK_ROBOT_CODE:}
+  vision:
+    enabled: ${VISION_ENABLED:true}
+    api-key: ${DEEPSEEK_API_KEY:}
+    base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+    model: ${DEEPSEEK_VISION_MODEL:deepseek-v4-flash-vision-exp}
+    frame-base-url: ${VISION_FRAME_BASE_URL:https://easterproject.pages.dev}
+    interval-ms: ${VISION_INTERVAL_MS:15000}
+    initial-delay-ms: ${VISION_INITIAL_DELAY_MS:3000}
+    timeout-seconds: ${VISION_TIMEOUT_SECONDS:45}
+    confidence-threshold: ${VISION_CONFIDENCE_THRESHOLD:0.65}

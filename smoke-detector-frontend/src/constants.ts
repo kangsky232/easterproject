@@ -99,6 +99,7 @@ export type PermissionCode =
   | 'HAZARD_HANDLE'
   | 'HAZARD_REVIEW'
   | 'NOTIFICATION_AUDIT'
+  | 'VISION_REVIEW'
 
 // 未登录或工作区尚未从后端加载成功时，只开放所有角色都具备的基础只读页面。
 export const SAFE_MODULES: ModuleKey[] = ['monitor', 'map', 'chat']

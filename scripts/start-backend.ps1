@@ -3,7 +3,8 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $environmentFiles = @(
     (Join-Path $projectRoot '.env.mqtt.local'),
-    (Join-Path $projectRoot '.env.dingtalk.local')
+    (Join-Path $projectRoot '.env.dingtalk.local'),
+    (Join-Path $projectRoot '.env.vision.local')
 )
 
 foreach ($environmentFile in $environmentFiles) {

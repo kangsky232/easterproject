@@ -27,6 +27,10 @@ import type {
   TrendPointRaw,
   User,
   UserAccount,
+  VisionEvent,
+  VisionReviewVerdict,
+  VisionStatus,
+  VisionSummary,
 } from './types'
 
 export function checkHealth(): Promise<unknown> {
@@ -101,6 +105,35 @@ export function fetchNotifications(query: NotificationQuery = {}): Promise<PageR
 
 export function fetchNotificationSummary(): Promise<NotificationSummary> {
   return api('/api/notifications/summary')
+}
+
+export function fetchVisionStatus(): Promise<VisionStatus> {
+  return api('/api/vision/status')
+}
+
+export function fetchVisionEvents(status = ''): Promise<PageResult<VisionEvent>> {
+  const params = new URLSearchParams({ page: '1', pageSize: '50' })
+  if (status) params.set('status', status)
+  return api(`/api/vision/events?${params}`)
+}
+
+export function fetchVisionSummary(): Promise<VisionSummary> {
+  return api('/api/vision/summary')
+}
+
+export function analyzeNextVisionFrame(): Promise<VisionStatus> {
+  return api('/api/vision/simulation/next', { method: 'POST' })
+}
+
+export function reviewVisionEvent(
+  id: number,
+  verdict: VisionReviewVerdict,
+  remark: string,
+): Promise<VisionEvent> {
+  return api(`/api/vision/events/${id}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ verdict, remark }),
+  })
 }
 
 export function auditNotification(

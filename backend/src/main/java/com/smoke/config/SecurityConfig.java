@@ -70,6 +70,8 @@ public class SecurityConfig {
                         .hasAnyRole("COMMUNITY_ADMIN", "SYSTEM_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/notifications/*/audit")
                         .hasAnyRole("COMMUNITY_ADMIN", "SYSTEM_ADMIN", "FIREFIGHTER")
+                        .requestMatchers(HttpMethod.POST, "/api/vision/simulation/next", "/api/vision/events/*/review")
+                        .hasAnyRole("COMMUNITY_ADMIN", "SYSTEM_ADMIN", "FIREFIGHTER")
                         .requestMatchers(HttpMethod.POST, "/api/broadcasts/*/deliver").hasAnyRole("COMMUNITY_ADMIN", "SYSTEM_ADMIN", "FIREFIGHTER")
                         .requestMatchers(HttpMethod.POST, "/api/broadcasts").hasAnyRole("COMMUNITY_ADMIN", "SYSTEM_ADMIN", "FIREFIGHTER")
                         .requestMatchers(HttpMethod.DELETE, "/api/broadcasts/**").hasAnyRole("COMMUNITY_ADMIN", "SYSTEM_ADMIN")

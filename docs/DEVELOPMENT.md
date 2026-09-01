@@ -1,6 +1,6 @@
 # 本地开发说明
 
-更新日期：2026-08-31。本说明以 Windows PowerShell 为例，默认采用非 Docker 启动方式。
+更新日期：2026-09-01。本说明以 Windows PowerShell 为例，默认采用非 Docker 启动方式。
 
 ## 组件与依赖
 
@@ -12,6 +12,7 @@
 | RAG 服务 | `5001` | 否 | 不可用时后端使用内置安全规则降级 |
 | MQTT Broker/华为云 IoTDA | 由平台决定 | 否 | 后端已支持 MQTT 入站遥测；HTTP 联调不依赖它 |
 | 钉钉 Stream | 钉钉云端 | 否 | 启用后接收机器人私聊，并将网页广播和自动告警下发到已绑定员工的钉钉单聊 |
+| DeepSeek Vision | DeepSeek 云端 | 否 | 有 Key 时分析模拟图片；无 Key 时明确使用内置演示规则 |
 
 需要安装 JDK 17+、Maven 3.9+、Node.js 18+、npm 和 MySQL 8。
 
@@ -34,9 +35,11 @@ mysql -uroot smart_smoke -e "SOURCE docs/migrations/20260826_decimal_concentrati
 mysql -uroot smart_smoke -e "SOURCE docs/migrations/20260826_extended_sensor_metrics.sql"
 mysql -uroot smart_smoke -e "SOURCE docs/migrations/20260828_role_workspace_3d_map.sql"
 mysql -uroot smart_smoke -e "SOURCE docs/migrations/20260831_hazard_workflow.sql"
+mysql -uroot smart_smoke -e "SOURCE docs/migrations/20260831_notification_audit.sql"
+mysql -uroot smart_smoke -e "SOURCE docs/migrations/20260901_vision_patrol.sql"
 ```
 
-这些迁移依次补齐数值精度、扩展传感器字段，以及 3D 楼栋/设备位置表。后端启动时 `FeatureSchemaInitializer` 也会兼容补齐地图表并初始化三栋模拟住宅楼；显式执行迁移便于部署审计和版本追踪。
+这些迁移依次补齐数值精度、扩展传感器字段、3D 楼栋/设备位置、隐患、通知审计和视觉事件表。后端启动时 `FeatureSchemaInitializer` 也会兼容补表并初始化三栋模拟住宅楼；显式执行迁移便于部署审计和版本追踪。
 
 ## 2. 启动后端
 
@@ -45,7 +48,7 @@ cd backend
 mvn spring-boot:run
 ```
 
-如需同时加载仓库根目录中被 Git 忽略的 `.env.mqtt.local` 和 `.env.dingtalk.local`，可在仓库根目录运行：
+如需同时加载仓库根目录中被 Git 忽略的 `.env.mqtt.local`、`.env.dingtalk.local` 和 `.env.vision.local`，可在仓库根目录运行：
 
 ```powershell
 .\scripts\start-backend.ps1
@@ -87,6 +90,8 @@ MQTT 不影响登录、数据库接口和前端基本联调。需要接入华为
 
 钉钉接入使用 Stream 模式，无需填写公网回调地址。在 `.env.dingtalk.local` 中设置 `DINGTALK_ENABLED=true`、Client ID 和 Client Secret，再用上面的启动脚本运行后端。每名接收人需要先在钉钉中私聊机器人一次；机器人回复“连接成功”后，其员工 userId 会写入 `dingtalk_recipient`，网页广播和新产生的传感器告警会发送到启用状态的绑定用户单聊。真实 Client Secret 不得提交到 Git。
 
+AI 视觉巡检默认启用，每 15 秒轮换模拟图片。在 `.env.vision.local` 中写入 `DEEPSEEK_API_KEY=<你的密钥>` 后，启动脚本会切换到 DeepSeek Vision；未配置 Key 时界面与事件使用 `SIMULATION_FALLBACK`。疑似结果会进入 `vision_event`，钉钉已配置时自动推送给绑定员工，再由有 `VISION_REVIEW` 权限的账号人工研判。当前输入仍是静态模拟图，不是真实摄像头。
+
 ## 开发账号
 
 - 全新数据库会按 `application-dev.yml` 的引导配置创建管理员。
@@ -115,6 +120,11 @@ MQTT 不影响登录、数据库接口和前端基本联调。需要接入华为
 | `DINGTALK_ENABLED` | 是否启动钉钉 Stream 和广播下发 | 默认 `false` |
 | `DINGTALK_CLIENT_ID` / `DINGTALK_CLIENT_SECRET` | 钉钉企业内部应用凭证 | 仅放在本地环境或机密管理中 |
 | `DINGTALK_ROBOT_CODE` | 主动发送消息的机器人编码 | 可留空，默认使用 Client ID |
+| `VISION_ENABLED` | 是否启动模拟视觉巡检定时任务 | 默认 `true` |
+| `DEEPSEEK_API_KEY` | DeepSeek 图片模型密钥 | 留空时明确使用模拟规则；仅放本地环境或机密管理中 |
+| `DEEPSEEK_BASE_URL` / `DEEPSEEK_VISION_MODEL` | DeepSeek 地址和模型 | `https://api.deepseek.com` / `deepseek-v4-flash-vision-exp` |
+| `VISION_INTERVAL_MS` / `VISION_INITIAL_DELAY_MS` | 轮换周期和首次延迟 | `15000` / `3000` |
+| `VISION_CONFIDENCE_THRESHOLD` | 疑似事件建档阈值 | `0.65` |
 | `DEVICE_AUTH_ENABLED` | 开发环境设备令牌校验 | 默认 `false`；生产强制开启 |
 | `CORS_ALLOWED_ORIGINS` | 允许的前端来源 | 开发默认允许 `5173/5174` |
 | `LOGIN_RATE_LIMIT_ENABLED` | 是否启用登录失败限流 | 默认 `false`；设为 `true` 时才启用连续失败锁定 |

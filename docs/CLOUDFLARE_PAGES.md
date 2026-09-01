@@ -1,6 +1,6 @@
 # Cloudflare Pages 与本机后端联调
 
-更新日期：2026-08-31。
+更新日期：2026-09-01。
 
 当前演示架构为：Vue 前端部署到 Cloudflare Pages，Spring Boot 与 MySQL 运行在开发者电脑上，Cloudflare Named Tunnel 使用固定域名把公网 HTTPS 请求转发到本机后端。
 
@@ -12,7 +12,7 @@
 
 Named Tunnel 重启后不会产生新地址，因此正常重启服务无需修改 Pages 环境变量。不过电脑关机、MySQL/后端退出、网络中断或 `cloudflared` 停止，仍会让前端显示“后端断开连接”。这是一套固定地址的演示架构，不是高可用生产部署。
 
-2026-08-31 最近一次联调快照中，Pages 和公网健康检查可访问，后端/MySQL 为 `UP`，MQTT 为 `CONNECTED`，视觉 AI 为 `NOT_CONNECTED`，知识库为 `FALLBACK_ONLY`，广播为 `DINGTALK_SINGLE_CHAT`。这些状态会随本机进程和外部服务变化，应在每次演示前重新验证。
+2026-09-01 本机配置中，MQTT 和钉钉已启用，视觉巡检已实现但未配置 DeepSeek Key，因此视觉能力预期为 `SIMULATION_FALLBACK`。Pages、公网健康、后端/MySQL 与隧道在线状态会变化，应在每次演示前重新验证。
 
 ## Pages 构建配置
 
@@ -38,7 +38,7 @@ $env:CORS_ALLOWED_ORIGINS = 'https://easterproject.pages.dev'
 .\scripts\start-backend.ps1
 ```
 
-该脚本只会加载 Git 忽略的 `.env.mqtt.local` 和 `.env.dingtalk.local`，再启动 Spring Boot；上面的 CORS 变量需在同一个 PowerShell 进程中先设置，或由 IDE/进程管理器注入。不要把真实 Client Secret 或 MQTT 凭据提交到 Git。
+该脚本会加载 Git 忽略的 `.env.mqtt.local`、`.env.dingtalk.local` 和 `.env.vision.local`，再启动 Spring Boot；上面的 CORS 变量需在同一个 PowerShell 进程中先设置，或由 IDE/进程管理器注入。要启用 DeepSeek，在 `.env.vision.local` 中设置 `DEEPSEEK_API_KEY`。不要把真实 Client Secret、DeepSeek Key 或 MQTT 凭据提交到 Git。
 
 验证本机接口：
 
@@ -82,6 +82,7 @@ Invoke-RestMethod https://api.kangroom.eu.cc/api/health
 - 仅重启 Spring Boot、MySQL 或 `cloudflared`。
 - Named Tunnel 保持绑定 `api.kangroom.eu.cc`，只是短暂断线后重连。
 - 仅新增钉钉接收人或修改本机未提交的机密配置。
+- 仅设置或轮换 `DEEPSEEK_API_KEY`；这是后端运行时变量，不需要重建静态前端。
 
 ## 断连排查顺序
 

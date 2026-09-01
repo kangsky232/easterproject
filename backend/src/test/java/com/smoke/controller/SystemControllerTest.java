@@ -3,6 +3,7 @@ package com.smoke.controller;
 import com.smoke.mqtt.HuaweiMqttSubscriber;
 import com.smoke.service.RagClient;
 import com.smoke.service.DingTalkMessageService;
+import com.smoke.service.VisionPatrolService;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
@@ -55,6 +56,7 @@ class SystemControllerTest {
         assertEquals("OLLAMA", data.get("llmProvider"));
         assertEquals("gpt-oss:120b-cloud", data.get("llmModel"));
         assertEquals("LOCAL_DEVELOPMENT", data.get("mode"));
+        assertEquals("SIMULATION_FALLBACK", data.get("visualAi"));
     }
 
     @Test
@@ -77,9 +79,12 @@ class SystemControllerTest {
         Environment environment = mock(Environment.class);
         HuaweiMqttSubscriber mqttSubscriber = mock(HuaweiMqttSubscriber.class);
         DingTalkMessageService dingTalkMessageService = mock(DingTalkMessageService.class);
+        VisionPatrolService visionPatrolService = mock(VisionPatrolService.class);
         when(ragClient.health()).thenReturn(health);
         when(environment.acceptsProfiles(any(Profiles.class))).thenReturn(production);
+        when(visionPatrolService.capability()).thenReturn("SIMULATION_FALLBACK");
         return new SystemController(
-                jdbcTemplate, ragClient, environment, mqttSubscriber, dingTalkMessageService);
+                jdbcTemplate, ragClient, environment, mqttSubscriber, dingTalkMessageService,
+                visionPatrolService);
     }
 }

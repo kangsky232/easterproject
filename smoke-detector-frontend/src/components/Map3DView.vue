@@ -25,6 +25,7 @@ import sunlitCorridorImage from '@/assets/corridor-cameras/sunlit-corridor.jpg'
 import { useClock } from '@/composables/useClock'
 import { useDashboardStore } from '@/store/dashboard'
 import { conc, fmtFull } from '@/utils/format'
+import VisionPatrolPanel from '@/components/VisionPatrolPanel.vue'
 
 interface Point {
   x: number
@@ -570,6 +571,8 @@ watch(
         <span class="is-offline">离线 {{ offlineCount }}</span>
       </div>
     </div>
+
+    <VisionPatrolPanel />
 
     <div class="map3d-layout">
       <div class="map3d-canvas panel">

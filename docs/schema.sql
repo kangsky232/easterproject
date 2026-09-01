@@ -111,6 +111,52 @@ CREATE TABLE IF NOT EXISTS notification_log (
     CONSTRAINT fk_notification_alert FOREIGN KEY (alert_id) REFERENCES alert_record(id)
 );
 
+-- AI 视觉巡检事件；模型只负责发现疑似风险，最终结论必须由工作人员复核
+CREATE TABLE IF NOT EXISTS vision_event (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    event_no VARCHAR(32) NOT NULL COMMENT '视觉事件编号',
+    camera_code VARCHAR(64) NOT NULL,
+    location VARCHAR(200) NOT NULL,
+    building_code VARCHAR(32) NOT NULL,
+    floor_no INT NOT NULL,
+    frame_key VARCHAR(64) NOT NULL COMMENT '前端模拟图片键',
+    image_url VARCHAR(500) NOT NULL COMMENT '提交给视觉模型的公开图片 URL',
+    detection_mode VARCHAR(32) NOT NULL COMMENT 'DEEPSEEK_VISION/SIMULATION_FALLBACK',
+    model_name VARCHAR(100) NOT NULL,
+    risk_level VARCHAR(16) NOT NULL,
+    confidence DECIMAL(6,4) NOT NULL,
+    summary VARCHAR(500) NOT NULL,
+    evidence VARCHAR(1000) NOT NULL,
+    status VARCHAR(24) NOT NULL COMMENT 'PENDING_REVIEW/CONFIRMED_FIRE/FALSE_ALARM',
+    dingtalk_status VARCHAR(16) NOT NULL COMMENT 'PENDING/SENT/FAILED/SKIPPED',
+    dingtalk_recipients INT,
+    dingtalk_error VARCHAR(500),
+    reviewer_username VARCHAR(64),
+    review_remark VARCHAR(500),
+    reviewed_at DATETIME,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    active_marker TINYINT GENERATED ALWAYS AS (
+        CASE WHEN status = 'PENDING_REVIEW' THEN 1 ELSE NULL END
+    ) STORED,
+    UNIQUE INDEX uk_vision_event_no (event_no),
+    UNIQUE INDEX uk_vision_camera_active (camera_code, active_marker),
+    INDEX idx_vision_status_time (status, created_at),
+    INDEX idx_vision_location_time (building_code, floor_no, created_at),
+    CONSTRAINT chk_vision_floor CHECK (floor_no > 0),
+    CONSTRAINT chk_vision_confidence CHECK (confidence BETWEEN 0 AND 1),
+    CONSTRAINT chk_vision_status CHECK (
+        status IN ('PENDING_REVIEW', 'CONFIRMED_FIRE', 'FALSE_ALARM')
+    ),
+    CONSTRAINT chk_vision_mode CHECK (
+        detection_mode IN ('DEEPSEEK_VISION', 'SIMULATION_FALLBACK')
+    ),
+    CONSTRAINT chk_vision_risk CHECK (risk_level IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')),
+    CONSTRAINT chk_vision_dingtalk CHECK (
+        dingtalk_status IN ('PENDING', 'SENT', 'FAILED', 'SKIPPED')
+    )
+);
+
 -- 用户表
 CREATE TABLE IF NOT EXISTS user_account (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,

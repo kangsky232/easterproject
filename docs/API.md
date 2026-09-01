@@ -1,6 +1,6 @@
 # 后端接口
 
-更新日期：2026-08-31。开发环境可通过 `/swagger-ui.html` 查看由代码生成的 OpenAPI 文档；本文件记录业务语义和协作约定。
+更新日期：2026-09-01。开发环境可通过 `/swagger-ui.html` 查看由代码生成的 OpenAPI 文档；本文件记录业务语义和协作约定。
 
 统一响应格式：
 
@@ -25,7 +25,7 @@ Authorization: Bearer <token>
 ## 系统
 
 - `GET /api/health`：健康检查，会执行 `SELECT 1` 验证 MySQL；数据库不可用时返回 HTTP `503`。
-- `GET /api/system/capabilities`：查询存储、设备接入、MQTT、AI、知识服务和广播模块的当前接入状态；`knowledgeBase=CONNECTED` 只表示 RAG Flask 健康接口可达，返回的提供方/模型名也是服务配置标签，并不证明 Ollama 已完成一次推理。运行模式来自 Spring Profile。
+- `GET /api/system/capabilities`：查询存储、设备接入、MQTT、视觉 AI、知识服务和广播模块的当前接入状态；`visualAi` 为 `DISABLED`、`SIMULATION_FALLBACK` 或 `DEEPSEEK_VISION`。`knowledgeBase=CONNECTED` 只表示 RAG Flask 健康接口可达，返回的提供方/模型名也是服务配置标签，并不证明 Ollama 已完成一次推理。运行模式来自 Spring Profile。
 - `GET /api/dashboard/overview`：设备总数、在线数、离线数和活动告警数。
 
 本地前端开发地址 `http://localhost:5173`、`http://127.0.0.1:5173`、`http://localhost:5174` 和 `http://127.0.0.1:5174` 已允许跨域访问 `/api/**`。
@@ -161,6 +161,29 @@ GET /api/devices/1/trend?start=2026-08-22T00:00:00&end=2026-08-22T23:59:59&bucke
 ```
 
 `floorNo` 不得超过目标楼栋层数，`positionX`/`positionZ` 必须处于楼栋宽度和深度范围内。场景数据存储在 `map_building` 与 `device_map_position`；未配置位置的已绑定设备在首次读取场景时会自动获得模拟位置。
+
+## AI 视觉实时巡检
+
+- `GET /api/vision/status`：返回巡检开关、当前是否分析、DeepSeek 是否配置、运行模式、模型、轮换周期、阈值、当前模拟帧、最近分析和最近事件。
+- `GET /api/vision/events?status=&page=1&pageSize=50`：分页查询视觉事件；`status` 可选 `PENDING_REVIEW`、`CONFIRMED_FIRE`、`FALSE_ALARM`。
+- `GET /api/vision/summary`：返回待人工判断、已确认为火情、已排除误报和总事件数。
+- `POST /api/vision/simulation/next`：立即分析下一张模拟帧；仅消防员、小区管理员和系统管理员可用。
+- `POST /api/vision/events/{id}/review`：人工提交一次性结论；仅消防员、小区管理员和系统管理员可用。
+
+复核请求：
+
+```json
+{
+  "verdict": "CONFIRMED_FIRE",
+  "remark": "已电话通知值班人员，现场确认配电箱冒烟"
+}
+```
+
+`verdict` 仅支持 `CONFIRMED_FIRE` 与 `FALSE_ALARM`，`remark` 必填且最多 500 字。后端从 JWT 写入复核账号与服务器时间；已复核事件再次提交返回 `409`，不能覆盖原结论。
+
+后端默认每 15 秒轮换 5 张静态模拟图片。配置 `DEEPSEEK_API_KEY` 后，请求以外部 HTTPS 图片 URL 发送到 DeepSeek `deepseek-v4-flash-vision-exp`；未配置时分析结果的 `mode` 为 `SIMULATION_FALLBACK`，配置后调用失败则为 `DEEPSEEK_ERROR`，失败帧不会创建疑似事件。模型或模拟规则只有在 `suspectedFire=true` 且 `confidence` 达到阈值时才建档；同一机位已有待复核事件时不会重复建档或重复推送。
+
+事件的 `dingtalkStatus` 为 `PENDING`、`SENT`、`FAILED` 或 `SKIPPED`，并保存成功接收人数或失败原因。钉钉消息会明确注明画面来自模拟轮播、不是现场摄像头；人工复核后会再发送结果通知。AI 结果只用于提示和分流，不能自动替代现场核验、119 报警或法定消防设施。
 
 ## 隐患闭环
 
