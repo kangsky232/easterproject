@@ -1,6 +1,6 @@
 # Cloudflare Pages 与本机后端联调
 
-更新日期：2026-09-01。
+更新日期：2026-09-02。
 
 当前演示架构为：Vue 前端部署到 Cloudflare Pages，Spring Boot 与 MySQL 运行在开发者电脑上，Cloudflare Named Tunnel 使用固定域名把公网 HTTPS 请求转发到本机后端。
 
@@ -12,7 +12,7 @@
 
 Named Tunnel 重启后不会产生新地址，因此正常重启服务无需修改 Pages 环境变量。不过电脑关机、MySQL/后端退出、网络中断或 `cloudflared` 停止，仍会让前端显示“后端断开连接”。这是一套固定地址的演示架构，不是高可用生产部署。
 
-2026-09-01 本机配置中，MQTT 和钉钉已启用，视觉巡检已实现但未配置 DeepSeek Key，因此视觉能力预期为 `SIMULATION_FALLBACK`。Pages、公网健康、后端/MySQL 与隧道在线状态会变化，应在每次演示前重新验证。
+2026-09-02 本机配置中，MQTT、钉钉和 DeepSeek Vision 已启用，能力接口已返回 `mqtt=CONNECTED`、`broadcast=DINGTALK_SINGLE_CHAT` 和 `visualAi=DEEPSEEK_VISION`；知识服务当前允许 `FALLBACK_ONLY`。这些值只代表检查时的运行状态，每次演示前仍应重新验证。
 
 ## Pages 构建配置
 
@@ -54,13 +54,13 @@ CORS_ALLOWED_ORIGINS=https://easterproject.pages.dev
 
 ### 2. 启动 Named Tunnel
 
-使用创建该域名映射时配置的 Named Tunnel 名称或 UUID：
+当前电脑使用 `easter-backend` Named Tunnel，并在命令行明确指定本机后端：
 
 ```powershell
-cloudflared tunnel run <TUNNEL_NAME_OR_UUID>
+cloudflared tunnel run --url http://127.0.0.1:8080 easter-backend
 ```
 
-Cloudflare Tunnel 配置中的 ingress 应把 `api.kangroom.eu.cc` 指向 `http://127.0.0.1:8080`。隧道凭据属于本机机密，不应提交到仓库。
+当前电脑没有依赖本地 `config.yml` 的 ingress 规则，因此 `--url` 不能省略。只运行 `cloudflared tunnel run easter-backend` 虽然能够连接 Cloudflare，但会对 HTTP 请求返回 `503`。如果其他环境使用配置文件，也可以通过 ingress 把 API 域名指向 `http://127.0.0.1:8080`。隧道凭据属于本机机密，不应提交到仓库。
 
 验证公网接口：
 
@@ -91,6 +91,16 @@ Invoke-RestMethod https://api.kangroom.eu.cc/api/health
 3. **Pages 构建变量**：确认 Production 的 `VITE_API_BASE` 为 `https://api.kangroom.eu.cc`，变量值没有末尾 `/`。
 4. **CORS**：确认后端 `CORS_ALLOWED_ORIGINS` 包含 `https://easterproject.pages.dev`。
 5. **浏览器缓存**：按 `Ctrl + F5`，在开发者工具 Network 中确认 `/api/health` 请求目标确实是 `api.kangroom.eu.cc`。
+
+使用 Wrangler 手工部署时也必须先设置 `VITE_API_BASE` 再构建。否则静态包会请求 Pages 自身的 `/api`，表现为后端断连：
+
+```powershell
+cd smoke-detector-frontend
+$env:VITE_API_BASE = 'https://api.kangroom.eu.cc'
+npm.cmd run build
+npx.cmd --yes wrangler@latest pages deploy dist --project-name easterproject --branch master
+Remove-Item Env:VITE_API_BASE
+```
 
 `GET /api/system/capabilities` 返回 `mqtt=CONNECTED` 只说明后端连接到 MQTT Broker；硬件是否在线仍要看设备最后心跳和最新遥测时间。
 

@@ -1,6 +1,6 @@
 # 智慧烟感监测系统
 
-更新日期：2026-09-01。
+更新日期：2026-09-02。
 
 面向社区烟感监测场景的全栈项目，包含 Vue 3 管理大屏、Spring Boot API、MySQL 数据存储、HTTP 设备接口、华为云 IoTDA MQTT 数据接入，以及可选的 RAG 和视觉复核扩展。
 
@@ -18,7 +18,7 @@
 
 完整业务边界、告警口径和分阶段迭代计划见 [业务场景与迭代路线](docs/BUSINESS_SCENARIO_AND_ROADMAP.md)。
 
-当前演示前端为 [https://easterproject.pages.dev](https://easterproject.pages.dev)，公网 API 固定为 [https://api.kangroom.eu.cc](https://api.kangroom.eu.cc)。API 通过 Cloudflare Named Tunnel 转发到本机 `127.0.0.1:8080`；重启服务无需更换域名，但本机后端、MySQL 和隧道进程必须保持运行。截至 2026-09-01 的本机配置中，数据库、MQTT 与钉钉单聊已配置，视觉巡检已启用但尚未提供 DeepSeek Key，因此运行在明确标注的 `SIMULATION_FALLBACK`，RAG 使用后端安全规则回退。这是运行配置说明，不是永久可用性承诺。
+当前演示前端为 [https://easterproject.pages.dev](https://easterproject.pages.dev)，公网 API 固定为 [https://api.kangroom.eu.cc](https://api.kangroom.eu.cc)。API 通过 Cloudflare Named Tunnel 转发到本机 `127.0.0.1:8080`；重启服务无需更换域名，但本机后端、MySQL 和隧道进程必须保持运行。截至 2026-09-02 的本机配置中，数据库、MQTT、钉钉单聊与 DeepSeek Vision 已配置，RAG 使用后端安全规则回退。DeepSeek 当前分析的是模拟轮播图片，不是真实摄像头。这是运行配置说明，不是永久可用性承诺。
 
 ## 项目结构
 

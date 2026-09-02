@@ -1,6 +1,6 @@
 # 业务场景与迭代路线
 
-更新日期：2026-09-01。
+更新日期：2026-09-02。
 
 ## 1. 当前业务定位
 
@@ -58,7 +58,7 @@
 
 Named Tunnel 重启后不需要修改后端域名或重新配置 Pages；但本机后端、MySQL 和 `cloudflared` 都必须持续运行。固定域名只解决地址稳定性，不提供 7×24 小时可用性。
 
-2026-09-01 本机配置中，MQTT 与钉钉已启用；视觉巡检已启用但没有 DeepSeek Key，因此预期为 `SIMULATION_FALLBACK`；知识库为 `FALLBACK_ONLY`。在线状态会变化，重启服务或外部依赖变化后应重新查询 `/api/system/capabilities`。
+2026-09-02 本机配置中，MQTT、钉钉与 DeepSeek Vision 已启用，能力检查结果分别为 `CONNECTED`、`DINGTALK_SINGLE_CHAT` 和 `DEEPSEEK_VISION`；知识库为 `FALLBACK_ONLY`。在线状态会变化，重启服务或外部依赖变化后应重新查询 `/api/system/capabilities`。
 
 当前主前端把登录信息保存在同源 `localStorage` 中，同一浏览器普通窗口的多个页签会共享并覆盖账号会话。并行验收不同角色时，应使用普通窗口与无痕窗口、不同浏览器或不同浏览器配置文件；若产品后续必须在同一浏览器页签中保持独立账号，需要把会话存储改为 `sessionStorage` 或引入显式的多账号会话设计。
 

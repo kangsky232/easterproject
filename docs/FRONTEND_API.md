@@ -1,6 +1,6 @@
 # 前端接口协作说明
 
-契约版本：2026-09-01。接口字段以本文件和开发环境 OpenAPI 为准；功能是否为真实外部集成，请同时查看 [功能状态](PROJECT_STATUS.md)。
+契约版本：2026-09-02。接口字段以本文件和开发环境 OpenAPI 为准；功能是否为真实外部集成，请同时查看 [功能状态](PROJECT_STATUS.md)。
 
 本文面向 Web、移动端和后续管理端开发。开发环境默认后端地址为 `http://127.0.0.1:8080`；Vite 开发时可直接使用 `/api` 代理。
 
@@ -100,7 +100,7 @@ Authorization: Bearer <token>
 | GET | `/api/system/capabilities` | 公开能力状态，前端可据此展示 MQTT、视觉 AI、知识库、广播的接入状态 |
 | GET | `/api/dashboard/overview` | 设备总数、在线数、离线数、活动告警数 |
 
-能力值属于运行时状态而不是版本承诺。`visualAi` 当前支持 `DISABLED`、`SIMULATION_FALLBACK`、`DEEPSEEK_VISION`；2026-09-01 本机未配置 DeepSeek Key，因此预期为 `SIMULATION_FALLBACK`。每次验收都应重新请求接口。
+能力值属于运行时状态而不是版本承诺。`visualAi` 当前支持 `DISABLED`、`SIMULATION_FALLBACK`、`DEEPSEEK_VISION`；2026-09-02 本机已配置 DeepSeek Key，检查结果为 `DEEPSEEK_VISION`。每次验收都应重新请求接口，且配置已加载不等于模型一定完成了一次成功推理。
 
 `/api/dashboard/overview` 的 `data`：
 
