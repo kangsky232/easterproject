@@ -9,6 +9,7 @@
 - [PROJECT_STATUS.md](PROJECT_STATUS.md)：已实现、模拟实现和待接入能力的边界。
 - [SMART_QA_OPTIMIZATION.md](SMART_QA_OPTIMIZATION.md)：智能问答架构、已完成优化、测试基线和后续路线。
 - [DEPLOYMENT.md](DEPLOYMENT.md)：当前 Windows + Cloudflare 演示部署、手工/自动前端发布、Docker 正式部署、验收和排错。
+- [RELEASE_PACKAGE.md](RELEASE_PACKAGE.md)：已构建发布包中的 Spring Boot JAR、前端 `dist`、数据库和运行方式。
 - [CLOUDFLARE_PAGES.md](CLOUDFLARE_PAGES.md)：Cloudflare Pages、`VITE_API_BASE`、本机后端隧道和断连排查。
 - [schema.sql](schema.sql)：MySQL 初始建表脚本。
 - [migrations/20260826_decimal_concentration.sql](migrations/20260826_decimal_concentration.sql)：已有数据库的浓度小数升级脚本。
