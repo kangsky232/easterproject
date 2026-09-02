@@ -9,12 +9,12 @@ function valueOf(key: string): number {
 }
 
 const counts: Record<string, ReturnType<typeof useCountUp>> = {
-  total_devices: useCountUp(() => valueOf('total_devices')),
-  online: useCountUp(() => valueOf('online')),
-  offline: useCountUp(() => valueOf('offline')),
-  alarm: useCountUp(() => valueOf('alarm')),
-  unhandled_alarms: useCountUp(() => valueOf('unhandled_alarms')),
-  open_hazards: useCountUp(() => valueOf('open_hazards')),
+  total_devices: useCountUp(() => valueOf('total_devices'), 500, 0),
+  online: useCountUp(() => valueOf('online'), 500, 0),
+  offline: useCountUp(() => valueOf('offline'), 500, 0),
+  alarm: useCountUp(() => valueOf('alarm'), 500, 0),
+  unhandled_alarms: useCountUp(() => valueOf('unhandled_alarms'), 500, 0),
+  open_hazards: useCountUp(() => valueOf('open_hazards'), 500, 0),
 }
 </script>
 

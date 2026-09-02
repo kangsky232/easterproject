@@ -114,7 +114,10 @@ const FEATURES = [
 <style scoped>
 .home {
   height: calc(100vh - 44px);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior-y: contain;
   display: flex;
   flex-direction: column;
 }
