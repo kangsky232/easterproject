@@ -5,7 +5,7 @@ import { CHART_METRICS, DEVICE_STATUS, type MetricKey } from '@/constants'
 import { theme, chartTheme, isDark } from '@/theme'
 import { useDashboardStore } from '@/store/dashboard'
 import { useCountUp } from '@/composables/useCountUp'
-import { conc } from '@/utils/format'
+import { conc, fmtTrendTime } from '@/utils/format'
 
 const store = useDashboardStore()
 const chartEl = ref<HTMLDivElement | null>(null)
@@ -108,11 +108,11 @@ function render(): void {
           fontSize: 11,
           hideOverlap: true,
           formatter: (value: number) => {
-            const d = new Date(value)
-            const minute = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-            return store.trendHours === 0
-              ? `${minute}:${String(d.getSeconds()).padStart(2, '0')}`
-              : minute
+            if (store.trendHours === 0) {
+              const d = new Date(value)
+              return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
+            }
+            return fmtTrendTime(new Date(value).toISOString(), store.trendHours)
           },
         },
         axisLine: { lineStyle: { color: chartTheme.axis } },
