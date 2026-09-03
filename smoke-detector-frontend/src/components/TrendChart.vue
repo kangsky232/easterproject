@@ -10,6 +10,7 @@ import { conc, fmtTrendTime } from '@/utils/format'
 const store = useDashboardStore()
 const chartEl = ref<HTMLDivElement | null>(null)
 let chart: echarts.ECharts | null = null
+let resizeObserver: ResizeObserver | null = null
 
 const device = computed(() => store.selectedDevice)
 const statusMeta = computed(() => DEVICE_STATUS[device.value?.status ?? 'offline'])
@@ -60,7 +61,6 @@ const RANGES = [
   { hours: 0, label: '实时' },
   { hours: 24, label: '24小时' },
   { hours: 24 * 7, label: '7天' },
-  { hours: 24 * 30, label: '30天' },
 ]
 
 function render(): void {
@@ -173,13 +173,20 @@ function resize(): void {
 }
 
 onMounted(() => {
-  if (chartEl.value) chart = echarts.init(chartEl.value)
+  if (chartEl.value) {
+    chart = echarts.init(chartEl.value)
+    // 告警条会动态改变监控区域高度；同步调整画布，避免底部坐标文字被裁切。
+    resizeObserver = new ResizeObserver(() => resize())
+    resizeObserver.observe(chartEl.value)
+  }
   window.addEventListener('resize', resize)
   render()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', resize)
+  resizeObserver?.disconnect()
+  resizeObserver = null
   chart?.dispose()
   chart = null
 })

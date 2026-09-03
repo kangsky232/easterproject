@@ -1705,7 +1705,8 @@ html.dark body {
 .monitor-pane {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* 告警条占用纵向空间时允许监控内容滚动，避免图表底部被固定视口裁切。 */
+  overflow: auto;
 }
 .monitor-grid {
   flex: 1;
